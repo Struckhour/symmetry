@@ -1,7 +1,7 @@
 
 
 <script lang="ts">
-	const size = 6;
+	const size = 5;
 	let solved = $state(false);
 	let clearingGrid = $state<CellState[][] | null>(null);
 	let exploding = $state(false);
@@ -342,8 +342,8 @@
 	}
 
 	function getCellClass(cell: CellState) {
-		if (cell === CELL_STATES.blue) return 'bg-blue-500';
-		if (cell === CELL_STATES.orange) return 'bg-orange-500';
+		if (cell === CELL_STATES.blue) return 'bg-blue-800';
+		if (cell === CELL_STATES.orange) return 'bg-orange-400';
 
 		return 'bg-slate-500';
 	}
@@ -354,7 +354,7 @@
 <main class="min-h-screen bg-slate-950 text-white flex items-center justify-center p-6">
 
 	<section class="w-full max-w-180">
-		<h1 class="mb-4 text-3xl font-bold text-center">SymmeTreat</h1>
+		<h1 class="mb-4 text-3xl font-bold text-center">Symmetreat</h1>
 		<div class="mb-4 flex justify-center gap-3">
 			<button
 				type="button"
