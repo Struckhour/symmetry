@@ -1,13 +1,15 @@
 
 
 <script lang="ts">
-	const size = 3;
+	const size = 6;
 	let solved = $state(false);
 	let clearingGrid = $state<CellState[][] | null>(null);
 	let exploding = $state(false);
 
 	let showVerticalLine = $state(false);
 	let showHorizontalLine = $state(false);
+	let showDiagonalDownLine = $state(false);
+	let showDiagonalUpLine = $state(false);
 	type SymmetryMode = 'vertical' | 'horizontal' | 'diagonalDown' | 'diagonalUp' | 'random';
 
 	let generationMode = $state<SymmetryMode>('random');
@@ -319,6 +321,8 @@
 
 		showVerticalLine = solvedSymmetries.vertical;
 		showHorizontalLine = solvedSymmetries.horizontal;
+		showDiagonalDownLine = solvedSymmetries.diagonalDown;
+		showDiagonalUpLine = solvedSymmetries.diagonalUp;
 
 		solved = true;
 		clearingGrid = cloneGrid(grid);
@@ -428,6 +432,18 @@
 							<div class="draw-horizontal-line h-1 w-full rounded-full bg-white shadow-[0_0_20px_rgba(255,255,255,0.9)]"></div>
 						</div>
 					{/if}
+
+					{#if showDiagonalDownLine}
+						<div class="absolute inset-3">
+							<div class="draw-diagonal-down-line"></div>
+						</div>
+					{/if}
+
+					{#if showDiagonalUpLine}
+						<div class="absolute inset-3">
+							<div class="draw-diagonal-up-line"></div>
+						</div>
+					{/if}
 				</div>
 			{/if}
 		</div>
@@ -465,6 +481,53 @@
 
 		to {
 			transform: scaleX(1);
+			opacity: 1;
+		}
+	}
+
+	.draw-diagonal-down-line,
+	.draw-diagonal-up-line {
+		position: absolute;
+		top: 50%;
+		left: 50%;
+		width: 141.42%;
+		height: 0.25rem;
+		border-radius: 9999px;
+		background: white;
+		box-shadow: 0 0 20px rgba(255, 255, 255, 0.9);
+		opacity: 0;
+	}
+
+	.draw-diagonal-down-line {
+		transform-origin: left;
+		animation: draw-diagonal-down-line 0.45s ease-out forwards;
+	}
+
+	.draw-diagonal-up-line {
+		transform-origin: left;
+		animation: draw-diagonal-up-line 0.45s ease-out forwards;
+	}
+
+	@keyframes draw-diagonal-down-line {
+		from {
+			transform: rotate(45deg) translateX(-50%) scaleX(0);
+			opacity: 0;
+		}
+
+		to {
+			transform: rotate(45deg) translateX(-50%) scaleX(1);
+			opacity: 1;
+		}
+	}
+
+	@keyframes draw-diagonal-up-line {
+		from {
+			transform: rotate(-45deg) translateX(-50%) scaleX(0);
+			opacity: 0;
+		}
+
+		to {
+			transform: rotate(-45deg) translateX(-50%) scaleX(1);
 			opacity: 1;
 		}
 	}
