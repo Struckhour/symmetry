@@ -1,17 +1,22 @@
 
 
 <script lang="ts">
-	const size = 5;
+	const size = 3;
 	let solved = $state(false);
 	let clearingGrid = $state<CellState[][] | null>(null);
 	let exploding = $state(false);
 
 	let showVerticalLine = $state(false);
 	let showHorizontalLine = $state(false);
-	type SymmetryMode = 'vertical' | 'horizontal' | 'random';
+	type SymmetryMode = 'vertical' | 'horizontal' | 'diagonalDown' | 'diagonalUp' | 'random';
 
 	let generationMode = $state<SymmetryMode>('random');
-	let validSolutionModes: SymmetryMode[] = ['vertical', 'horizontal'];
+	let validSolutionModes: ConcreteSymmetryMode[] = [
+		'vertical',
+		'horizontal',
+		'diagonalDown',
+		'diagonalUp'
+	];
 
 	function changeGenerationMode(event: Event) {
 		const select = event.currentTarget as HTMLSelectElement;
@@ -22,7 +27,9 @@
 	function checkSolvedSymmetries(source: CellState[][]) {
 		return {
 			vertical: isVerticallySymmetrical(source),
-			horizontal: isHorizontallySymmetrical(source)
+			horizontal: isHorizontallySymmetrical(source),
+			diagonalDown: isDiagonalDownSymmetrical(source),
+			diagonalUp: isDiagonalUpSymmetrical(source)
 		};
 	}
 	const CELL_STATES = {
@@ -83,16 +90,59 @@
 		return newGrid;
 	}
 
+	function createDiagonalDownSymmetryGrid(): CellState[][] {
+		const newGrid = createEmptyGrid();
+
+		for (let row = 0; row < size; row++) {
+			for (let col = row; col < size; col++) {
+				const value = randomCell();
+
+				newGrid[row][col] = value;
+				newGrid[col][row] = value;
+			}
+		}
+
+		return newGrid;
+	}
+
+	function createDiagonalUpSymmetryGrid(): CellState[][] {
+		const newGrid = createEmptyGrid();
+
+		for (let row = 0; row < size; row++) {
+			for (let col = 0; col < size - row; col++) {
+				const value = randomCell();
+
+				const mirrorRow = size - 1 - col;
+				const mirrorCol = size - 1 - row;
+
+				newGrid[row][col] = value;
+				newGrid[mirrorRow][mirrorCol] = value;
+			}
+		}
+
+		return newGrid;
+	}
+
+	type ConcreteSymmetryMode = Exclude<SymmetryMode, 'random'>;
+
+	function getRandomConcreteMode(): ConcreteSymmetryMode {
+		const modes: ConcreteSymmetryMode[] = [
+			'vertical',
+			'horizontal',
+			'diagonalDown',
+			'diagonalUp'
+		];
+
+		return modes[Math.floor(Math.random() * modes.length)];
+	}
+
 	function createSymmetryGrid(mode: SymmetryMode): CellState[][] {
-		if (mode === 'vertical') {
-			return createVerticalSymmetryGrid();
-		}
+		if (mode === 'vertical') return createVerticalSymmetryGrid();
+		if (mode === 'horizontal') return createHorizontalSymmetryGrid();
+		if (mode === 'diagonalDown') return createDiagonalDownSymmetryGrid();
+		if (mode === 'diagonalUp') return createDiagonalUpSymmetryGrid();
 
-		if (mode === 'horizontal') {
-			return createHorizontalSymmetryGrid();
-		}
-
-		const randomMode = Math.random() < 0.5 ? 'vertical' : 'horizontal';
+		const randomMode = getRandomConcreteMode();
 		return createSymmetryGrid(randomMode);
 	}
 
@@ -128,6 +178,33 @@
 		return true;
 	}
 
+	function isDiagonalDownSymmetrical(source: CellState[][]) {
+		for (let row = 0; row < size; row++) {
+			for (let col = row; col < size; col++) {
+				if (source[row][col] !== source[col][row]) {
+					return false;
+				}
+			}
+		}
+
+		return true;
+	}
+
+	function isDiagonalUpSymmetrical(source: CellState[][]) {
+		for (let row = 0; row < size; row++) {
+			for (let col = 0; col < size - row; col++) {
+				const mirrorRow = size - 1 - col;
+				const mirrorCol = size - 1 - row;
+
+				if (source[row][col] !== source[mirrorRow][mirrorCol]) {
+					return false;
+				}
+			}
+		}
+
+		return true;
+	}
+
 	function isSolved(source: CellState[][]) {
 		return validSolutionModes.some((mode) => {
 			if (mode === 'vertical') return isVerticallySymmetrical(source);
@@ -140,14 +217,15 @@
 	function scrambleGrid(
 		source: CellState[][],
 		flips = 8,
-		mode: SymmetryMode = 'vertical'
+		mode: ConcreteSymmetryMode = 'vertical'
 	): CellState[][] {
-		if (mode === 'random') {
-			mode = Math.random() < 0.5 ? 'vertical' : 'horizontal';
-		}
 		const half = Math.floor(size / 2);
 		const scrambled = cloneGrid(source);
-		const pairs = [];
+
+		const pairs: {
+			a: { row: number; col: number };
+			b: { row: number; col: number };
+		}[] = [];
 
 		if (mode === 'vertical') {
 			for (let row = 0; row < size; row++) {
@@ -166,6 +244,31 @@
 					pairs.push({
 						a: { row, col },
 						b: { row: size - 1 - row, col }
+					});
+				}
+			}
+		}
+
+		if (mode === 'diagonalDown') {
+			for (let row = 0; row < size; row++) {
+				for (let col = row + 1; col < size; col++) {
+					pairs.push({
+						a: { row, col },
+						b: { row: col, col: row }
+					});
+				}
+			}
+		}
+
+		if (mode === 'diagonalUp') {
+			for (let row = 0; row < size; row++) {
+				for (let col = 0; col < size - 1 - row; col++) {
+					pairs.push({
+						a: { row, col },
+						b: {
+							row: size - 1 - col,
+							col: size - 1 - row
+						}
 					});
 				}
 			}
@@ -191,9 +294,7 @@
 	function newPuzzle() {
 		const actualGenerationMode =
 			generationMode === 'random'
-				? Math.random() < 0.5
-					? 'vertical'
-					: 'horizontal'
+				? getRandomConcreteMode()
 				: generationMode;
 
 		const solution = createSymmetryGrid(actualGenerationMode);
@@ -212,9 +313,7 @@
 
 		const solvedSymmetries = checkSolvedSymmetries(grid);
 
-		const validSolved =
-			(validSolutionModes.includes('vertical') && solvedSymmetries.vertical) ||
-			(validSolutionModes.includes('horizontal') && solvedSymmetries.horizontal);
+		const validSolved = validSolutionModes.some((mode) => solvedSymmetries[mode]);
 
 		if (!validSolved) return;
 
