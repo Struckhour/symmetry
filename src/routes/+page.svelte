@@ -1,10 +1,16 @@
 
 
 <script lang="ts">
-	const size = 5;
+	import { onMount } from 'svelte';
+
 	let solved = $state(false);
 	let clearingGrid = $state<CellState[][] | null>(null);
+	let clearingSize = $state<number | null>(null);
 	let exploding = $state(false);
+	let score = $state(0);
+	type ColorMode = 'theme' | 'greyscale';
+	let colorMode = $state<ColorMode>('theme');
+
 
 	let showVerticalLine = $state(false);
 	let showHorizontalLine = $state(false);
@@ -20,10 +26,124 @@
 		'diagonalUp'
 	];
 
+	const startingTimeSeconds = 5;
+
+	let gameOver = $state(false);
+
+	const maxTimeSeconds = 120;
+
+
+	let timeLeft = $state(startingTimeSeconds);
+
+	let timerPercent = $derived(timeLeft / maxTimeSeconds);
+	let timerDegrees = $derived(timerPercent * 360);
+
+	let clearingPalette = $state<ReturnType<typeof getPalette> | null>(null);
+	type LevelSettings = {
+		threshold: number;
+		levelText: string;
+		size: number;
+		scrambleFlips: number;
+		solveBonusSeconds: number;
+		creationModes: ConcreteSymmetryMode[];
+		colors: {
+			blue: string;
+			orange: string;
+		};
+	};
+
+	const levels: LevelSettings[] = [
+		{
+			threshold: 0,
+			levelText: 'Level 1: Vertical Symmetry',
+			size: 4,
+			scrambleFlips: 1,
+			solveBonusSeconds: 8,
+			creationModes: ['vertical'],
+			colors: {
+				blue: 'bg-blue-800',
+				orange: 'bg-orange-400'
+			}
+		},
+		{
+			threshold: 40,
+			levelText: 'Level 2: Horizontal Symmetry',
+			size: 5,
+			scrambleFlips: 1,
+			solveBonusSeconds: 10,
+			creationModes: ['horizontal'],
+			colors: {
+				blue: 'bg-purple-800',
+				orange: 'bg-yellow-400'
+			}
+		},
+		{
+			threshold: 100,
+			levelText: 'Level 3: Diagonal Symmetry',
+			size: 5,
+			scrambleFlips: 2,
+			solveBonusSeconds: 12,
+			creationModes: ['diagonalDown', 'diagonalUp'],
+			colors: {
+				blue: 'bg-emerald-800',
+				orange: 'bg-pink-400'
+			}
+		}
+	];
+
+	let currentLevelIndex = $state(0);
+	let size = $state(levels[0].size);
+
+	let currentLevel = $derived(levels[currentLevelIndex]);
+
+	onMount(() => {
+		const interval = setInterval(() => {
+			if (solved || gameOver) return;
+
+			timeLeft = Math.max(0, timeLeft - 0.05);
+
+			if (timeLeft === 0) {
+				gameOver = true;
+			}
+		}, 50);
+
+		return () => clearInterval(interval);
+	});
+
+	function getRandomCreationMode(): ConcreteSymmetryMode {
+		const modes = currentLevel.creationModes;
+
+		return modes[Math.floor(Math.random() * modes.length)];
+	}
+
+	function updateLevel() {
+		const nextLevelIndex = levels.findLastIndex((level) => score >= level.threshold);
+
+		if (nextLevelIndex === currentLevelIndex) return;
+
+		currentLevelIndex = nextLevelIndex;
+		size = currentLevel.size;
+	}
+
+	function getPalette() {
+		if (colorMode === 'greyscale') {
+			return {
+				blue: 'bg-slate-700',
+				orange: 'bg-slate-300'
+			};
+		}
+
+		return currentLevel.colors;
+	}
+
 	function changeGenerationMode(event: Event) {
 		const select = event.currentTarget as HTMLSelectElement;
 		generationMode = select.value as SymmetryMode;
 		newPuzzle();
+	}
+
+	function countSolvedSymmetries(solvedSymmetries: Record<ConcreteSymmetryMode, boolean>) {
+		return validSolutionModes.filter((mode) => solvedSymmetries[mode]).length;
 	}
 
 	function checkSolvedSymmetries(source: CellState[][]) {
@@ -294,19 +414,35 @@
 	}
 
 	function newPuzzle() {
-		const actualGenerationMode =
-			generationMode === 'random'
-				? getRandomConcreteMode()
-				: generationMode;
+		if (gameOver) return;
+
+		const actualGenerationMode = getRandomCreationMode();
 
 		const solution = createSymmetryGrid(actualGenerationMode);
 
 		solutionGrid = solution;
-		grid = scrambleGrid(solution, 2, actualGenerationMode);
+		grid = scrambleGrid(solution, currentLevel.scrambleFlips, actualGenerationMode);
+	}
+
+	function resetGame() {
+		score = 0;
+		timeLeft = startingTimeSeconds;
+		gameOver = false;
+		solved = false;
+		clearingGrid = null;
+		exploding = false;
+		showVerticalLine = false;
+		showHorizontalLine = false;
+		showDiagonalDownLine = false;
+		showDiagonalUpLine = false;
+		currentLevelIndex = 0;
+		size = levels[0].size;
+
+		newPuzzle();
 	}
 
 	async function toggleCell(row: number, col: number) {
-		if (solved) return;
+		if (solved || gameOver) return;
 
 		grid[row][col] =
 			grid[row][col] === CELL_STATES.blue
@@ -325,7 +461,20 @@
 		showDiagonalUpLine = solvedSymmetries.diagonalUp;
 
 		solved = true;
+		const symmetryCount = countSolvedSymmetries(solvedSymmetries);
+
+		const bonus = symmetryCount * currentLevel.solveBonusSeconds;
+
+		timeLeft = Math.min(
+			maxTimeSeconds,
+			timeLeft + bonus
+		);
 		clearingGrid = cloneGrid(grid);
+		clearingPalette = getPalette();
+		clearingSize = size;
+
+		score += bonus;
+		updateLevel();
 
 		await new Promise((resolve) => setTimeout(resolve, 450));
 
@@ -335,15 +484,24 @@
 		await new Promise((resolve) => setTimeout(resolve, 700));
 
 		clearingGrid = null;
+		clearingPalette = null;
+		clearingSize = null;
 		exploding = false;
 		solved = false;
 		showVerticalLine = false;
 		showHorizontalLine = false;
+		showDiagonalDownLine = false;
+		showDiagonalUpLine = false;
 	}
 
-	function getCellClass(cell: CellState) {
-		if (cell === CELL_STATES.blue) return 'bg-blue-800';
-		if (cell === CELL_STATES.orange) return 'bg-orange-400';
+	function getCellClass(cell: CellState, palette = getPalette()) {
+		if (gameOver) {
+			if (cell === CELL_STATES.blue) return `${palette.blue} opacity-35 saturate-50`;
+			if (cell === CELL_STATES.orange) return `${palette.orange} opacity-35 saturate-50`;
+		}
+
+		if (cell === CELL_STATES.blue) return palette.blue;
+		if (cell === CELL_STATES.orange) return palette.orange;
 
 		return 'bg-slate-500';
 	}
@@ -354,17 +512,56 @@
 <main class="min-h-screen bg-slate-950 text-white flex items-center justify-center p-6">
 
 	<section class="w-full max-w-180">
-		<h1 class="mb-4 text-3xl font-bold text-center">Symmetreat</h1>
+		<h1 class="mb-4 text-3xl font-bold text-center">Reflektions</h1>
+		<!-- Set Right, Just So, Symmetrix, Accord, There, Aligned, Flipped, Fold, Folded, Foldy/Foldie, Symfold  -->
+		<div class="mb-4 flex justify-center gap-10 text-2xl font-bold">
+			<div>
+				Score: {score}
+			</div>
+
+			{#if gameOver}
+				<div class="text-red-400">
+					Game Over
+				</div>
+			{:else}
+				<div>
+					Time: {Math.ceil(timeLeft)}
+				</div>
+			{/if}
+		</div>
 		<div class="mb-4 flex justify-center gap-3">
 			<button
 				type="button"
 				class="rounded bg-slate-700 px-4 py-2 hover:bg-slate-600"
-				onclick={newPuzzle}
+				onclick={resetGame}
 			>
-				New Puzzle
+				New Game
 			</button>
+			<label class="flex items-center gap-3 text-sm font-medium">
+				<span>Colour</span>
 
-			<select
+				<button
+					type="button"
+					role="switch"
+					aria-checked={colorMode !== 'greyscale'}
+					aria-label="Toggle colour mode"
+					class={[
+						'relative h-7 w-14 rounded-full transition-colors',
+						colorMode !== 'greyscale' ? 'bg-green-500' : 'bg-slate-600'
+					].join(' ')}
+					onclick={() => (colorMode = colorMode === 'greyscale' ? 'theme' : 'greyscale')}
+				>
+					<div
+						class={[
+							'absolute top-1 h-5 w-5 rounded-full bg-white transition-all',
+							colorMode !== 'greyscale' ? 'left-8' : 'left-1'
+						].join(' ')}
+					></div>
+				</button>
+
+				<span>{colorMode !== 'greyscale' ? 'On' : 'Off'}</span>
+			</label>
+			<!-- <select
 				class="rounded bg-slate-700 px-4 py-2 text-white hover:bg-slate-600"
 				value={generationMode}
 				onchange={changeGenerationMode}
@@ -372,80 +569,95 @@
 				<option value="random">Random</option>
 				<option value="vertical">Vertical</option>
 				<option value="horizontal">Horizontal</option>
-			</select>
+			</select> -->
 		</div>
-		<div class="relative overflow-hidden rounded-2xl">
-			<div
-				class={[
-					'grid aspect-square w-full gap-2 rounded-2xl bg-slate-800 p-3 shadow-xl transition-all duration-500',
-					solved ? 'scale-[1.02] shadow-orange-400/80 ring-4 ring-orange-300' : ''
-				].join(' ')}
-				style={`grid-template-columns: repeat(${size}, minmax(0, 1fr));`}
-			>
-				{#each grid as row, rowIndex}
-					{#each row as cell, colIndex}
-						<button
-							type="button"
-							aria-label={`Toggle cell ${rowIndex + 1}, ${colIndex + 1}`}
-							disabled={solved}
-							class={[
-								'aspect-square rounded-lg transition hover:scale-95 focus:outline-none focus:ring-2 focus:ring-white',
-								getCellClass(cell),
-								solved ? 'animate-pulse' : ''
-							].join(' ')}
-							onclick={() => toggleCell(rowIndex, colIndex)}
-						></button>
-					{/each}
-				{/each}
-			</div>
-
-			{#if clearingGrid}
+		<div class="mb-3 text-center text-lg font-semibold text-slate-200">
+			{currentLevel.levelText}
+		</div>
+		<div
+			class="rounded-3xl p-2 transition-all"
+			style={`background: conic-gradient(from 0deg, rgb(255 255 110) ${timerDegrees}deg, rgb(71 85 105) ${timerDegrees}deg 360deg);`}
+		>
+			<div class="relative overflow-hidden rounded-2xl bg-slate-950">
+				{#if gameOver}
+					<div class="pointer-events-none absolute inset-0 z-30 flex items-center justify-center">
+						<div class="rounded-lg border border-slate-500 bg-slate-950/90 px-5 py-2 text-xl font-bold tracking-wider text-red-300">
+							GAME OVER
+						</div>
+					</div>
+				{/if}
 				<div
-					class="pointer-events-none absolute inset-0 z-10 grid gap-2 p-3"
+					class={[
+						'grid aspect-square w-full gap-2 rounded-2xl bg-slate-800 p-3 shadow-xl transition-all duration-500',
+						solved ? 'scale-[1.02] shadow-orange-400/80 ring-4 ring-orange-300' : ''
+					].join(' ')}
 					style={`grid-template-columns: repeat(${size}, minmax(0, 1fr));`}
 				>
-					{#each clearingGrid as row, rowIndex}
+					{#each grid as row, rowIndex}
 						{#each row as cell, colIndex}
-							<div
+							<button
+								type="button"
+								aria-label={`Toggle cell ${rowIndex + 1}, ${colIndex + 1}`}
+								disabled={solved || gameOver}
 								class={[
-									'aspect-square rounded-lg',
+									'aspect-square rounded-lg transition-all duration-700 hover:scale-95 focus:outline-none focus:ring-2 focus:ring-white',
 									getCellClass(cell),
-									exploding ? 'explode-cell' : ''
+									solved ? 'animate-pulse' : ''
 								].join(' ')}
-								style={`--tx:${(colIndex - (size - 1) / 2) * 150}px; --ty:${(rowIndex - (size - 1) / 2) * 150}px;`}
-							></div>
+								onclick={() => toggleCell(rowIndex, colIndex)}
+							></button>
 						{/each}
 					{/each}
 				</div>
-			{/if}
 
-			{#if solved}
-				<div class="pointer-events-none absolute inset-0 z-20 p-3">
-					{#if showVerticalLine}
-						<div class="absolute inset-3 flex justify-center">
-							<div class="draw-vertical-line h-full w-1 rounded-full bg-white shadow-[0_0_20px_rgba(255,255,255,0.9)]"></div>
-						</div>
-					{/if}
+				{#if clearingGrid}
+					<div
+						class="pointer-events-none absolute inset-0 z-10 grid gap-2 p-3"
+						style={`grid-template-columns: repeat(${clearingSize ?? size}, minmax(0, 1fr));`}
+					>
+						{#each clearingGrid as row, rowIndex}
+							{#each row as cell, colIndex}
+								<div
+									class={[
+										'aspect-square rounded-lg',
+										getCellClass(cell, clearingPalette ?? getPalette()),
+										exploding ? 'explode-cell' : ''
+									].join(' ')}
+									style={`--tx:${(colIndex - (size - 1) / 2) * 150}px; --ty:${(rowIndex - (size - 1) / 2) * 150}px;`}
+								></div>
+							{/each}
+						{/each}
+					</div>
+				{/if}
 
-					{#if showHorizontalLine}
-						<div class="absolute inset-3 flex items-center">
-							<div class="draw-horizontal-line h-1 w-full rounded-full bg-white shadow-[0_0_20px_rgba(255,255,255,0.9)]"></div>
-						</div>
-					{/if}
+				{#if solved}
+					<div class="pointer-events-none absolute inset-0 z-20 p-3">
+						{#if showVerticalLine}
+							<div class="absolute inset-3 flex justify-center">
+								<div class="draw-vertical-line h-full w-1 rounded-full bg-white shadow-[0_0_20px_rgba(255,255,255,0.9)]"></div>
+							</div>
+						{/if}
 
-					{#if showDiagonalDownLine}
-						<div class="absolute inset-3">
-							<div class="draw-diagonal-down-line"></div>
-						</div>
-					{/if}
+						{#if showHorizontalLine}
+							<div class="absolute inset-3 flex items-center">
+								<div class="draw-horizontal-line h-1 w-full rounded-full bg-white shadow-[0_0_20px_rgba(255,255,255,0.9)]"></div>
+							</div>
+						{/if}
 
-					{#if showDiagonalUpLine}
-						<div class="absolute inset-3">
-							<div class="draw-diagonal-up-line"></div>
-						</div>
-					{/if}
-				</div>
-			{/if}
+						{#if showDiagonalDownLine}
+							<div class="absolute inset-3">
+								<div class="draw-diagonal-down-line"></div>
+							</div>
+						{/if}
+
+						{#if showDiagonalUpLine}
+							<div class="absolute inset-3">
+								<div class="draw-diagonal-up-line"></div>
+							</div>
+						{/if}
+					</div>
+				{/if}
+			</div>
 		</div>
 	</section>
 </main>
