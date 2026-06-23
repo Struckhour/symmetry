@@ -12,18 +12,35 @@
 	let colorMode = $state<ColorMode>('theme');
 
 
-	let showVerticalLine = $state(false);
-	let showHorizontalLine = $state(false);
-	let showDiagonalDownLine = $state(false);
-	let showDiagonalUpLine = $state(false);
-	type SymmetryMode = 'vertical' | 'horizontal' | 'diagonalDown' | 'diagonalUp' | 'random';
+	let solvedLineModes = $state<ConcreteSymmetryMode[]>([]);
+	type ShapeMode = 'square' | 'triangle' | 'hexagon' | 'pentagon';
+
+	type ShapeDefinition = {
+		createEmptyGrid: () => CellState[][];
+	};
+
+	const shapes: Partial<Record<ShapeMode, ShapeDefinition>> = {
+		square: {
+			createEmptyGrid
+		}
+	};
+
+	type LineStyle = 'vertical' | 'horizontal' | 'diagonalDown' | 'diagonalUp';
+	type SymmetryMode =
+		| 'squareVertical'
+		| 'squareHorizontal'
+		| 'squareDiagonalDown'
+		| 'squareDiagonalUp'
+		| 'random';
+
+	type ConcreteSymmetryMode = Exclude<SymmetryMode, 'random'>;
 
 	let generationMode = $state<SymmetryMode>('random');
 	let validSolutionModes: ConcreteSymmetryMode[] = [
-		'vertical',
-		'horizontal',
-		'diagonalDown',
-		'diagonalUp'
+		'squareVertical',
+		'squareHorizontal',
+		'squareDiagonalDown',
+		'squareDiagonalUp'
 	];
 
 	const startingTimeSeconds = 5;
@@ -42,6 +59,7 @@
 	type LevelSettings = {
 		threshold: number;
 		levelText: string;
+		shape: ShapeMode;
 		size: number;
 		scrambleFlips: number;
 		solveBonusSeconds: number;
@@ -57,9 +75,10 @@
 			threshold: 0,
 			levelText: 'Level 1: Vertical Symmetry',
 			size: 4,
+			shape: 'square',
 			scrambleFlips: 1,
 			solveBonusSeconds: 8,
-			creationModes: ['vertical'],
+			creationModes: ['squareVertical'],
 			colors: {
 				blue: 'bg-blue-800',
 				orange: 'bg-orange-400'
@@ -69,9 +88,10 @@
 			threshold: 40,
 			levelText: 'Level 2: Horizontal Symmetry',
 			size: 5,
+			shape: 'square',
 			scrambleFlips: 1,
 			solveBonusSeconds: 10,
-			creationModes: ['horizontal'],
+			creationModes: ['squareHorizontal'],
 			colors: {
 				blue: 'bg-purple-800',
 				orange: 'bg-yellow-400'
@@ -81,9 +101,10 @@
 			threshold: 100,
 			levelText: 'Level 3: Diagonal Symmetry',
 			size: 5,
+			shape: 'square',
 			scrambleFlips: 2,
 			solveBonusSeconds: 12,
-			creationModes: ['diagonalDown', 'diagonalUp'],
+			creationModes: ['squareDiagonalDown', 'squareDiagonalUp'],
 			colors: {
 				blue: 'bg-emerald-800',
 				orange: 'bg-pink-400'
@@ -91,6 +112,17 @@
 		}
 	];
 
+	type CellCoord = {
+		row: number;
+		col: number;
+	};
+
+	type MirrorPair = {
+		a: CellCoord;
+		b: CellCoord;
+	};
+
+	let currentShape = $state<ShapeMode>(levels[0].shape);
 	let currentLevelIndex = $state(0);
 	let size = $state(levels[0].size);
 
@@ -110,6 +142,84 @@
 		return () => clearInterval(interval);
 	});
 
+	function isSymmetrical(source: CellState[][], pairs: MirrorPair[]) {
+		for (const pair of pairs) {
+			if (
+				source[pair.a.row][pair.a.col] !==
+				source[pair.b.row][pair.b.col]
+			) {
+				return false;
+			}
+		}
+
+		return true;
+	}
+
+	function getSquareVerticalPairs(): MirrorPair[] {
+		const pairs: MirrorPair[] = [];
+		const half = Math.floor(size / 2);
+
+		for (let row = 0; row < size; row++) {
+			for (let col = 0; col < half; col++) {
+				pairs.push({
+					a: { row, col },
+					b: { row, col: size - 1 - col }
+				});
+			}
+		}
+
+		return pairs;
+	}
+
+	function getSquareHorizontalPairs(): MirrorPair[] {
+		const pairs: MirrorPair[] = [];
+		const half = Math.floor(size / 2);
+
+		for (let row = 0; row < half; row++) {
+			for (let col = 0; col < size; col++) {
+				pairs.push({
+					a: { row, col },
+					b: { row: size - 1 - row, col }
+				});
+			}
+		}
+
+		return pairs;
+	}
+
+	function getSquareDiagonalDownPairs(): MirrorPair[] {
+		const pairs: MirrorPair[] = [];
+
+		for (let row = 0; row < size; row++) {
+			for (let col = row + 1; col < size; col++) {
+				pairs.push({
+					a: { row, col },
+					b: { row: col, col: row }
+				});
+			}
+		}
+
+		return pairs;
+	}
+
+	function getSquareDiagonalUpPairs(): MirrorPair[] {
+		const pairs: MirrorPair[] = [];
+
+		for (let row = 0; row < size; row++) {
+			for (let col = 0; col < size - 1 - row; col++) {
+				pairs.push({
+					a: { row, col },
+					b: {
+						row: size - 1 - col,
+						col: size - 1 - row
+					}
+				});
+			}
+		}
+
+		return pairs;
+	}
+
 	function getRandomCreationMode(): ConcreteSymmetryMode {
 		const modes = currentLevel.creationModes;
 
@@ -123,6 +233,7 @@
 
 		currentLevelIndex = nextLevelIndex;
 		size = currentLevel.size;
+		currentShape = currentLevel.shape;
 	}
 
 	function getPalette() {
@@ -147,19 +258,19 @@
 	}
 
 	function checkSolvedSymmetries(source: CellState[][]) {
-		return {
-			vertical: isVerticallySymmetrical(source),
-			horizontal: isHorizontallySymmetrical(source),
-			diagonalDown: isDiagonalDownSymmetrical(source),
-			diagonalUp: isDiagonalUpSymmetrical(source)
-		};
+		return Object.fromEntries(
+			validSolutionModes.map((mode) => [
+				mode,
+				isSymmetrical(source, getPairsForMode(mode))
+			])
+		) as Record<ConcreteSymmetryMode, boolean>;
 	}
 	const CELL_STATES = {
 		blue: 0,
 		orange: 1
 	} as const;
 
-	type CellState = (typeof CELL_STATES)[keyof typeof CELL_STATES];
+	type CellState = ((typeof CELL_STATES)[keyof typeof CELL_STATES]) | null;
 
 	let solutionGrid = $state<CellState[][]>(createEmptyGrid());
 	let grid = $state<CellState[][]>(createEmptyGrid());
@@ -178,226 +289,93 @@
 		return source.map((row) => [...row]);
 	}
 
-	function createVerticalSymmetryGrid(): CellState[][] {
-		const newGrid = createEmptyGrid();
-		const half = Math.floor(size / 2);
+	function createGridFromPairs(pairs: MirrorPair[]): CellState[][] {
+		const shapeDefinition = shapes[currentShape];
 
-		for (let row = 0; row < size; row++) {
-			for (let col = 0; col < half; col++) {
-				const value = randomCell();
-				const mirrorCol = size - 1 - col;
+		if (!shapeDefinition) {
+			throw new Error(`No shape definition found for ${currentShape}`);
+		}
 
-				newGrid[row][col] = value;
-				newGrid[row][mirrorCol] = value;
+		const newGrid = shapeDefinition.createEmptyGrid();
+
+		for (let row = 0; row < newGrid.length; row++) {
+			for (let col = 0; col < newGrid[row].length; col++) {
+				newGrid[row][col] = randomCell();
 			}
+		}
+
+		for (const pair of pairs) {
+			const value = randomCell();
+
+			newGrid[pair.a.row][pair.a.col] = value;
+			newGrid[pair.b.row][pair.b.col] = value;
 		}
 
 		return newGrid;
 	}
 
-	function createHorizontalSymmetryGrid(): CellState[][] {
-		const newGrid = createEmptyGrid();
-		const half = Math.floor(size / 2);
-
-		for (let row = 0; row < half; row++) {
-			for (let col = 0; col < size; col++) {
-				const value = randomCell();
-				const mirrorRow = size - 1 - row;
-
-				newGrid[row][col] = value;
-				newGrid[mirrorRow][col] = value;
-			}
+	const symmetryModes = {
+		squareVertical: {
+			label: 'Vertical',
+			getPairs: getSquareVerticalPairs,
+			lineStyle: 'vertical'
+		},
+		squareHorizontal: {
+			label: 'Horizontal',
+			getPairs: getSquareHorizontalPairs,
+			lineStyle: 'horizontal'
+		},
+		squareDiagonalDown: {
+			label: 'Diagonal Down',
+			getPairs: getSquareDiagonalDownPairs,
+			lineStyle: 'diagonalDown'
+		},
+		squareDiagonalUp: {
+			label: 'Diagonal Up',
+			getPairs: getSquareDiagonalUpPairs,
+			lineStyle: 'diagonalUp'
 		}
+	} satisfies Record<ConcreteSymmetryMode, {
+		label: string;
+		getPairs: () => MirrorPair[];
+		lineStyle: LineStyle;
+	}>;
 
-		return newGrid;
+	function getLineStyleForMode(mode: ConcreteSymmetryMode): LineStyle {
+		return symmetryModes[mode].lineStyle;
 	}
-
-	function createDiagonalDownSymmetryGrid(): CellState[][] {
-		const newGrid = createEmptyGrid();
-
-		for (let row = 0; row < size; row++) {
-			for (let col = row; col < size; col++) {
-				const value = randomCell();
-
-				newGrid[row][col] = value;
-				newGrid[col][row] = value;
-			}
-		}
-
-		return newGrid;
-	}
-
-	function createDiagonalUpSymmetryGrid(): CellState[][] {
-		const newGrid = createEmptyGrid();
-
-		for (let row = 0; row < size; row++) {
-			for (let col = 0; col < size - row; col++) {
-				const value = randomCell();
-
-				const mirrorRow = size - 1 - col;
-				const mirrorCol = size - 1 - row;
-
-				newGrid[row][col] = value;
-				newGrid[mirrorRow][mirrorCol] = value;
-			}
-		}
-
-		return newGrid;
-	}
-
-	type ConcreteSymmetryMode = Exclude<SymmetryMode, 'random'>;
 
 	function getRandomConcreteMode(): ConcreteSymmetryMode {
 		const modes: ConcreteSymmetryMode[] = [
-			'vertical',
-			'horizontal',
-			'diagonalDown',
-			'diagonalUp'
+			'squareVertical',
+			'squareHorizontal',
+			'squareDiagonalDown',
+			'squareDiagonalUp'
 		];
 
 		return modes[Math.floor(Math.random() * modes.length)];
 	}
 
 	function createSymmetryGrid(mode: SymmetryMode): CellState[][] {
-		if (mode === 'vertical') return createVerticalSymmetryGrid();
-		if (mode === 'horizontal') return createHorizontalSymmetryGrid();
-		if (mode === 'diagonalDown') return createDiagonalDownSymmetryGrid();
-		if (mode === 'diagonalUp') return createDiagonalUpSymmetryGrid();
-
-		const randomMode = getRandomConcreteMode();
-		return createSymmetryGrid(randomMode);
-	}
-
-	function isVerticallySymmetrical(source: CellState[][]) {
-		const half = Math.floor(size / 2);
-
-		for (let row = 0; row < size; row++) {
-			for (let col = 0; col < half; col++) {
-				const mirrorCol = size - 1 - col;
-
-				if (source[row][col] !== source[row][mirrorCol]) {
-					return false;
-				}
-			}
+		if (mode === 'random') {
+			const randomMode = getRandomConcreteMode();
+			return createSymmetryGrid(randomMode);
 		}
 
-		return true;
+		return createGridFromPairs(getPairsForMode(mode));
 	}
 
-	function isHorizontallySymmetrical(source: CellState[][]) {
-		const half = Math.floor(size / 2);
-
-		for (let row = 0; row < half; row++) {
-			for (let col = 0; col < size; col++) {
-				const mirrorRow = size - 1 - row;
-
-				if (source[row][col] !== source[mirrorRow][col]) {
-					return false;
-				}
-			}
-		}
-
-		return true;
-	}
-
-	function isDiagonalDownSymmetrical(source: CellState[][]) {
-		for (let row = 0; row < size; row++) {
-			for (let col = row; col < size; col++) {
-				if (source[row][col] !== source[col][row]) {
-					return false;
-				}
-			}
-		}
-
-		return true;
-	}
-
-	function isDiagonalUpSymmetrical(source: CellState[][]) {
-		for (let row = 0; row < size; row++) {
-			for (let col = 0; col < size - row; col++) {
-				const mirrorRow = size - 1 - col;
-				const mirrorCol = size - 1 - row;
-
-				if (source[row][col] !== source[mirrorRow][mirrorCol]) {
-					return false;
-				}
-			}
-		}
-
-		return true;
-	}
-
-	function isSolved(source: CellState[][]) {
-		return validSolutionModes.some((mode) => {
-			if (mode === 'vertical') return isVerticallySymmetrical(source);
-			if (mode === 'horizontal') return isHorizontallySymmetrical(source);
-
-			return false;
-		});
+	function getPairsForMode(mode: ConcreteSymmetryMode): MirrorPair[] {
+		return symmetryModes[mode].getPairs();
 	}
 
 	function scrambleGrid(
 		source: CellState[][],
 		flips = 8,
-		mode: ConcreteSymmetryMode = 'vertical'
+		mode: ConcreteSymmetryMode = 'squareVertical'
 	): CellState[][] {
-		const half = Math.floor(size / 2);
 		const scrambled = cloneGrid(source);
-
-		const pairs: {
-			a: { row: number; col: number };
-			b: { row: number; col: number };
-		}[] = [];
-
-		if (mode === 'vertical') {
-			for (let row = 0; row < size; row++) {
-				for (let col = 0; col < half; col++) {
-					pairs.push({
-						a: { row, col },
-						b: { row, col: size - 1 - col }
-					});
-				}
-			}
-		}
-
-		if (mode === 'horizontal') {
-			for (let row = 0; row < half; row++) {
-				for (let col = 0; col < size; col++) {
-					pairs.push({
-						a: { row, col },
-						b: { row: size - 1 - row, col }
-					});
-				}
-			}
-		}
-
-		if (mode === 'diagonalDown') {
-			for (let row = 0; row < size; row++) {
-				for (let col = row + 1; col < size; col++) {
-					pairs.push({
-						a: { row, col },
-						b: { row: col, col: row }
-					});
-				}
-			}
-		}
-
-		if (mode === 'diagonalUp') {
-			for (let row = 0; row < size; row++) {
-				for (let col = 0; col < size - 1 - row; col++) {
-					pairs.push({
-						a: { row, col },
-						b: {
-							row: size - 1 - col,
-							col: size - 1 - row
-						}
-					});
-				}
-			}
-		}
-
-		pairs.sort(() => Math.random() - 0.5);
-
+		const pairs = [...getPairsForMode(mode)].sort(() => Math.random() - 0.5);
 		const flipsToApply = Math.min(flips, pairs.length);
 
 		for (let i = 0; i < flipsToApply; i++) {
@@ -431,12 +409,10 @@
 		solved = false;
 		clearingGrid = null;
 		exploding = false;
-		showVerticalLine = false;
-		showHorizontalLine = false;
-		showDiagonalDownLine = false;
-		showDiagonalUpLine = false;
+		solvedLineModes = [];
 		currentLevelIndex = 0;
 		size = levels[0].size;
+		currentShape = levels[0].shape;
 
 		newPuzzle();
 	}
@@ -455,10 +431,7 @@
 
 		if (!validSolved) return;
 
-		showVerticalLine = solvedSymmetries.vertical;
-		showHorizontalLine = solvedSymmetries.horizontal;
-		showDiagonalDownLine = solvedSymmetries.diagonalDown;
-		showDiagonalUpLine = solvedSymmetries.diagonalUp;
+		solvedLineModes = validSolutionModes.filter((mode) => solvedSymmetries[mode]);
 
 		solved = true;
 		const symmetryCount = countSolvedSymmetries(solvedSymmetries);
@@ -488,13 +461,13 @@
 		clearingSize = null;
 		exploding = false;
 		solved = false;
-		showVerticalLine = false;
-		showHorizontalLine = false;
-		showDiagonalDownLine = false;
-		showDiagonalUpLine = false;
+		solvedLineModes = [];
 	}
 
 	function getCellClass(cell: CellState, palette = getPalette()) {
+		if (cell === null) {
+			return 'invisible pointer-events-none';
+		}
 		if (gameOver) {
 			if (cell === CELL_STATES.blue) return `${palette.blue} opacity-35 saturate-50`;
 			if (cell === CELL_STATES.orange) return `${palette.orange} opacity-35 saturate-50`;
@@ -588,10 +561,10 @@
 				{/if}
 				<div
 					class={[
-						'grid aspect-square w-full gap-2 rounded-2xl bg-slate-800 p-3 shadow-xl transition-all duration-500',
+						'board board-square aspect-square w-full gap-2 rounded-2xl bg-slate-800 p-3 shadow-xl transition-all duration-500',
 						solved ? 'scale-[1.02] shadow-orange-400/80 ring-4 ring-orange-300' : ''
 					].join(' ')}
-					style={`grid-template-columns: repeat(${size}, minmax(0, 1fr));`}
+					style={`--size:${size};`}
 				>
 					{#each grid as row, rowIndex}
 						{#each row as cell, colIndex}
@@ -612,8 +585,8 @@
 
 				{#if clearingGrid}
 					<div
-						class="pointer-events-none absolute inset-0 z-10 grid gap-2 p-3"
-						style={`grid-template-columns: repeat(${clearingSize ?? size}, minmax(0, 1fr));`}
+						class="pointer-events-none absolute inset-0 z-10 board board-square gap-2 p-3"
+						style={`--size:${clearingSize ?? size};`}
 					>
 						{#each clearingGrid as row, rowIndex}
 							{#each row as cell, colIndex}
@@ -623,7 +596,7 @@
 										getCellClass(cell, clearingPalette ?? getPalette()),
 										exploding ? 'explode-cell' : ''
 									].join(' ')}
-									style={`--tx:${(colIndex - (size - 1) / 2) * 150}px; --ty:${(rowIndex - (size - 1) / 2) * 150}px;`}
+									style={`--tx:${(colIndex - ((clearingSize ?? size) - 1) / 2) * 150}px; --ty:${(rowIndex - ((clearingSize ?? size) - 1) / 2) * 150}px;`}
 								></div>
 							{/each}
 						{/each}
@@ -632,29 +605,27 @@
 
 				{#if solved}
 					<div class="pointer-events-none absolute inset-0 z-20 p-3">
-						{#if showVerticalLine}
-							<div class="absolute inset-3 flex justify-center">
-								<div class="draw-vertical-line h-full w-1 rounded-full bg-white shadow-[0_0_20px_rgba(255,255,255,0.9)]"></div>
-							</div>
-						{/if}
+						{#each solvedLineModes as mode}
+							{@const lineStyle = getLineStyleForMode(mode)}
 
-						{#if showHorizontalLine}
-							<div class="absolute inset-3 flex items-center">
-								<div class="draw-horizontal-line h-1 w-full rounded-full bg-white shadow-[0_0_20px_rgba(255,255,255,0.9)]"></div>
-							</div>
-						{/if}
-
-						{#if showDiagonalDownLine}
-							<div class="absolute inset-3">
-								<div class="draw-diagonal-down-line"></div>
-							</div>
-						{/if}
-
-						{#if showDiagonalUpLine}
-							<div class="absolute inset-3">
-								<div class="draw-diagonal-up-line"></div>
-							</div>
-						{/if}
+							{#if lineStyle === 'vertical'}
+								<div class="absolute inset-3 flex justify-center">
+									<div class="draw-vertical-line h-full w-1 rounded-full bg-white shadow-[0_0_20px_rgba(255,255,255,0.9)]"></div>
+								</div>
+							{:else if lineStyle === 'horizontal'}
+								<div class="absolute inset-3 flex items-center">
+									<div class="draw-horizontal-line h-1 w-full rounded-full bg-white shadow-[0_0_20px_rgba(255,255,255,0.9)]"></div>
+								</div>
+							{:else if lineStyle === 'diagonalDown'}
+								<div class="absolute inset-3">
+									<div class="draw-diagonal-down-line"></div>
+								</div>
+							{:else if lineStyle === 'diagonalUp'}
+								<div class="absolute inset-3">
+									<div class="draw-diagonal-up-line"></div>
+								</div>
+							{/if}
+						{/each}
 					</div>
 				{/if}
 			</div>
@@ -758,4 +729,8 @@
 		}
 	}
 
+	.board-square {
+		display: grid;
+		grid-template-columns: repeat(var(--size), minmax(0, 1fr));
+	}
 </style>
