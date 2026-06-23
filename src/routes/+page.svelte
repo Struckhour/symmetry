@@ -13,17 +13,13 @@
 
 
 	let solvedLineModes = $state<ConcreteSymmetryMode[]>([]);
-	type ShapeMode = 'square' | 'triangle' | 'hexagon' | 'pentagon';
+
 
 	type ShapeDefinition = {
 		createEmptyGrid: () => CellState[][];
 	};
 
-	const shapes: Partial<Record<ShapeMode, ShapeDefinition>> = {
-		square: {
-			createEmptyGrid
-		}
-	};
+
 
 	type LineStyle = 'vertical' | 'horizontal' | 'diagonalDown' | 'diagonalUp';
 	type SymmetryMode =
@@ -59,7 +55,6 @@
 	type LevelSettings = {
 		threshold: number;
 		levelText: string;
-		shape: ShapeMode;
 		size: number;
 		scrambleFlips: number;
 		solveBonusSeconds: number;
@@ -75,7 +70,6 @@
 			threshold: 0,
 			levelText: 'Level 1: Vertical Symmetry',
 			size: 4,
-			shape: 'square',
 			scrambleFlips: 1,
 			solveBonusSeconds: 8,
 			creationModes: ['squareVertical'],
@@ -88,7 +82,6 @@
 			threshold: 40,
 			levelText: 'Level 2: Horizontal Symmetry',
 			size: 5,
-			shape: 'square',
 			scrambleFlips: 1,
 			solveBonusSeconds: 10,
 			creationModes: ['squareHorizontal'],
@@ -101,7 +94,6 @@
 			threshold: 100,
 			levelText: 'Level 3: Diagonal Symmetry',
 			size: 5,
-			shape: 'square',
 			scrambleFlips: 2,
 			solveBonusSeconds: 12,
 			creationModes: ['squareDiagonalDown', 'squareDiagonalUp'],
@@ -122,7 +114,6 @@
 		b: CellCoord;
 	};
 
-	let currentShape = $state<ShapeMode>(levels[0].shape);
 	let currentLevelIndex = $state(0);
 	let size = $state(levels[0].size);
 
@@ -233,7 +224,6 @@
 
 		currentLevelIndex = nextLevelIndex;
 		size = currentLevel.size;
-		currentShape = currentLevel.shape;
 	}
 
 	function getPalette() {
@@ -270,7 +260,7 @@
 		orange: 1
 	} as const;
 
-	type CellState = ((typeof CELL_STATES)[keyof typeof CELL_STATES]) | null;
+	type CellState = (typeof CELL_STATES)[keyof typeof CELL_STATES];
 
 	let solutionGrid = $state<CellState[][]>(createEmptyGrid());
 	let grid = $state<CellState[][]>(createEmptyGrid());
@@ -290,19 +280,9 @@
 	}
 
 	function createGridFromPairs(pairs: MirrorPair[]): CellState[][] {
-		const shapeDefinition = shapes[currentShape];
-
-		if (!shapeDefinition) {
-			throw new Error(`No shape definition found for ${currentShape}`);
-		}
-
-		const newGrid = shapeDefinition.createEmptyGrid();
-
-		for (let row = 0; row < newGrid.length; row++) {
-			for (let col = 0; col < newGrid[row].length; col++) {
-				newGrid[row][col] = randomCell();
-			}
-		}
+		const newGrid = Array.from({ length: size }, () =>
+			Array.from({ length: size }, () => randomCell())
+		);
 
 		for (const pair of pairs) {
 			const value = randomCell();
@@ -412,7 +392,6 @@
 		solvedLineModes = [];
 		currentLevelIndex = 0;
 		size = levels[0].size;
-		currentShape = levels[0].shape;
 
 		newPuzzle();
 	}
@@ -465,9 +444,6 @@
 	}
 
 	function getCellClass(cell: CellState, palette = getPalette()) {
-		if (cell === null) {
-			return 'invisible pointer-events-none';
-		}
 		if (gameOver) {
 			if (cell === CELL_STATES.blue) return `${palette.blue} opacity-35 saturate-50`;
 			if (cell === CELL_STATES.orange) return `${palette.orange} opacity-35 saturate-50`;
