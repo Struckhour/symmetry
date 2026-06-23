@@ -12,6 +12,7 @@
 	const startingTimeSeconds = 5;
 	const maxTimeSeconds = 120;
 
+	let highScore = $state(0);
 	let score = $state(0);
 	let timeLeft = $state(startingTimeSeconds);
 	let gameOver = $state(false);
@@ -64,6 +65,17 @@
 	let currentLevel = $derived(levels[currentLevelIndex]);
 
 	onMount(() => {
+		const savedHighScore = localStorage.getItem('reflektions-high-score');
+
+		if (savedHighScore !== null) {
+			highScore = Number(savedHighScore);
+		}
+
+		const savedColorMode = localStorage.getItem('reflektions-color-mode');
+
+		if (savedColorMode === 'theme' || savedColorMode === 'greyscale') {
+			colorMode = savedColorMode;
+		}
 		const interval = setInterval(() => {
 			if (gameOver) return;
 
@@ -98,8 +110,21 @@
 
 	function handleSolve(bonus: number) {
 		timeLeft = Math.min(maxTimeSeconds, timeLeft + bonus);
-		score += bonus;
+
+		const nextScore = score + bonus;
+		score = nextScore;
+
+		if (nextScore > highScore) {
+			highScore = nextScore;
+			localStorage.setItem('reflektions-high-score', String(highScore));
+		}
+
 		updateLevel();
+	}
+
+	function toggleColorMode() {
+		colorMode = colorMode === 'greyscale' ? 'theme' : 'greyscale';
+		localStorage.setItem('reflektions-color-mode', colorMode);
 	}
 
 	function resetGame() {
@@ -117,6 +142,7 @@
 
 		<div class="mb-4 flex justify-center gap-10 text-2xl font-bold">
 			<div>Score: {score}</div>
+			<div>Best: {highScore}</div>
 
 			{#if gameOver}
 				<div class="text-red-400">Game Over</div>
@@ -146,7 +172,7 @@
 						'relative h-7 w-14 rounded-full transition-colors',
 						colorMode !== 'greyscale' ? 'bg-green-500' : 'bg-slate-600'
 					].join(' ')}
-					onclick={() => (colorMode = colorMode === 'greyscale' ? 'theme' : 'greyscale')}
+					onclick={toggleColorMode}
 				>
 					<div
 						class={[
