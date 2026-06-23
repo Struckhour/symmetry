@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import SquareGame from '$lib/components/SquareGame.svelte';
+	import TriangleGame from '$lib/components/TriangleGame.svelte';
 	import type {
 		LevelSettings
 	} from '$lib/types';
@@ -167,13 +168,14 @@
 			class="rounded-3xl p-2 transition-all"
 			style={`background: conic-gradient(from 0deg, rgb(255 255 110) ${timerDegrees}deg, rgb(71 85 105) ${timerDegrees}deg 360deg);`}
 		>
-			<SquareGame
+			<!-- <SquareGame
 				{gameId}
 				level={currentLevel}
 				palette={getPalette()}
 				{gameOver}
 				onSolve={handleSolve}
-			/>
+			/> -->
+			<TriangleGame size={4} palette={getPalette()} />
 		</div>
 	</section>
 </main>
