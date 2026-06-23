@@ -175,7 +175,13 @@
 				{gameOver}
 				onSolve={handleSolve}
 			/> -->
-			<TriangleGame size={4} palette={getPalette()} />
+			<TriangleGame
+				{gameId}
+				level={currentLevel}
+				palette={getPalette()}
+				{gameOver}
+				onSolve={handleSolve}
+			/>
 		</div>
 	</section>
 </main>

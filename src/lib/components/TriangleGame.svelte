@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { Palette } from '$lib/types';
+	import { onMount, untrack } from 'svelte';
 
 	const CELL_STATES = {
 		blue: 0,
@@ -28,24 +29,43 @@
 
     type TriangleSymmetryMode = ConcreteTriangleSymmetryMode | 'random';
 
+    let solved = $state(false);
+    let solvedModes = $state<ConcreteTriangleSymmetryMode[]>([]);
     let creationMode = $state<TriangleSymmetryMode>('random');
 
+    let clearingSize = $state<number | null>(null);
+    let clearingBoardWidth = $state<number | null>(null);
+    let clearingBoardHeight = $state<number | null>(null);
+
+    let clearingCells = $state<TriangleCell[] | null>(null);
+    let exploding = $state(false);
+    let clearingPalette = $state<Palette | null>(null);
+
+    let currentPuzzleMode = $state<ConcreteTriangleSymmetryMode>('topToBase');
     type Point = {
         x: number;
         y: number;
     };
-    
-	let {
-		size = 5,
-		palette = {
-			blue: 'bg-blue-800',
-			orange: 'bg-orange-400'
-		}
-	}: {
-		size?: number;
-		palette?: Palette;
-	} = $props();
 
+    let {
+        gameId,
+        level,
+        palette,
+        gameOver,
+        onSolve,
+    }: {
+        gameId: number;
+        level: {
+            size: number;
+            scrambleFlips: number;
+            solveBonusSeconds: number;
+        };
+        palette: Palette;
+        gameOver: boolean;
+        onSolve: (bonus: number) => void;
+    } = $props();
+
+    let size = $derived(level.size);
 
     type TriangleMirrorPair = {
         aId: string;
@@ -222,26 +242,64 @@
 		].join(' ');
 	}
 
-	function toggleCell(id: string) {
-		cells = cells.map((cell) =>
-			cell.id === id
-				? {
-						...cell,
-						state:
-							cell.state === CELL_STATES.blue
-								? CELL_STATES.orange
-								: CELL_STATES.blue
-					}
-				: cell
-		);
-	}
+    async function toggleCell(id: string) {
+        if (solved || gameOver) return;
 
-	function getSvgFill(cell: CellState) {
-		if (cell === CELL_STATES.blue) return classToColor(palette.blue);
-		if (cell === CELL_STATES.orange) return classToColor(palette.orange);
+        cells = cells.map((cell) =>
+            cell.id === id
+                ? {
+                        ...cell,
+                        state:
+                            cell.state === CELL_STATES.blue
+                                ? CELL_STATES.orange
+                                : CELL_STATES.blue
+                    }
+                : cell
+        );
 
-		return '#64748b';
-	}
+        const solvedSymmetries = checkTriangleSolvedSymmetries();
+
+        solvedModes = Object.entries(solvedSymmetries)
+            .filter(([, value]) => value)
+            .map(([mode]) => mode) as ConcreteTriangleSymmetryMode[];
+
+        if (solvedModes.length === 0) return;
+
+        solved = true;
+
+        const bonus = solvedModes.length * level.solveBonusSeconds;
+
+        clearingCells = cells.map((cell) => ({ ...cell }));
+        clearingPalette = palette;
+        clearingSize = size;
+        clearingBoardWidth = boardWidth;
+        clearingBoardHeight = boardHeight;
+
+        onSolve(bonus);
+
+        await new Promise((resolve) => setTimeout(resolve, 450));
+
+        newTrianglePuzzle();
+        exploding = true;
+
+        await new Promise((resolve) => setTimeout(resolve, 700));
+
+        clearingCells = null;
+        clearingPalette = null;
+        clearingSize = null;
+        clearingBoardWidth = null;
+        clearingBoardHeight = null;
+        exploding = false;
+        solved = false;
+        solvedModes = [];
+    }
+
+    function getSvgFill(cell: CellState, activePalette = palette) {
+        if (cell === CELL_STATES.blue) return classToColor(activePalette.blue);
+        if (cell === CELL_STATES.orange) return classToColor(activePalette.orange);
+
+        return '#64748b';
+    }
 
 	function classToColor(className: string) {
 		const colors: Record<string, string> = {
@@ -410,109 +468,242 @@
     }
 
     function newTrianglePuzzle() {
-        const actualMode = resolveTriangleSymmetryMode(creationMode);
+        cells = createTriangleCells();
 
-        createTriangleSymmetryBoard(actualMode);
-        scrambleTriangleBoard(1, actualMode);
+        currentPuzzleMode =
+            resolveTriangleSymmetryMode(creationMode);
+
+        createTriangleSymmetryBoard(currentPuzzleMode);
+        scrambleTriangleBoard(level.scrambleFlips, currentPuzzleMode);
     }
+
+    function getTriangleAxisForBoard(
+        mode: TriangleSymmetryMode,
+        width: number,
+        height: number
+    ): { a: Point; b: Point } {
+        if (mode === 'topToBase') {
+            return {
+                a: { x: width / 2, y: 0 },
+                b: { x: width / 2, y: height }
+            };
+        }
+
+        if (mode === 'leftToRightSide') {
+            return {
+                a: { x: 0, y: height },
+                b: { x: width * 0.75, y: height / 2 }
+            };
+        }
+
+        return {
+            a: { x: width, y: height },
+            b: { x: width * 0.25, y: height / 2 }
+        };
+    }
+
+    function getTriangleLinePointsForBoard(
+        mode: ConcreteTriangleSymmetryMode,
+        width: number,
+        height: number
+    ): string {
+        const axis = getTriangleAxisForBoard(mode, width, height);
+
+        return `${axis.a.x},${axis.a.y} ${axis.b.x},${axis.b.y}`;
+    }
+
+    let initialized = false;
+
+    $effect(() => {
+        const id = gameId;
+
+        if (!initialized) {
+            initialized = true;
+            return;
+        }
+
+        untrack(() => {
+            resetBoard();
+        });
+    });
+
+    function resetBoard() {
+        solved = false;
+        solvedModes = [];
+        clearingCells = null;
+        clearingPalette = null;
+        clearingSize = null;
+        clearingBoardWidth = null;
+        clearingBoardHeight = null;
+        exploding = false;
+
+        newTrianglePuzzle();
+    }
+
+    onMount(() => {
+        newTrianglePuzzle();
+    });
 </script>
-<select
-	class="mb-3 rounded bg-slate-700 px-4 py-2 text-white"
-	bind:value={creationMode}
->
-	<option value="random">Random</option>
-	<option value="topToBase">Top to base midpoint</option>
-	<option value="leftToRightSide">Left corner to opposite side midpoint</option>
-	<option value="rightToLeftSide">Right corner to opposite side midpoint</option>
-</select>
-<button
-	type="button"
-	class="mb-3 rounded bg-green-700 px-4 py-2 text-white hover:bg-green-600"
-	onclick={() => {
-	const solved = checkTriangleSolvedSymmetries();
 
-	console.log(solved);
 
-	console.log(
-		Object.values(solved).some(Boolean)
-	);
-}}
->
-	Check symmetry
-</button>
-<button
-	type="button"
-	class="mb-3 rounded bg-blue-700 px-4 py-2 text-white hover:bg-blue-600"
-	onclick={newTrianglePuzzle}
->
-	New Triangle Puzzle
-</button>
-<div class="triangle-board">
-    <svg
-        class="triangle-svg"
-        viewBox={`0 0 ${boardWidth} ${boardHeight}`}
-        preserveAspectRatio="xMidYMid meet"
-        role="grid"
-        aria-label="Triangle board"
-    >
-		{#each cells as cell}
-			<polygon
-				points={cell.points}
-				fill={getSvgFill(cell.state)}
-				class="triangle-cell"
-				role="button"
-				tabindex="0"
-				aria-label={`Toggle triangle ${cell.row + 1}, ${cell.col + 1}`}
-				onclick={() => toggleCell(cell.id)}
-				onkeydown={(event) => {
-					if (event.key === 'Enter' || event.key === ' ') {
-						event.preventDefault();
-						toggleCell(cell.id);
-					}
-				}}
-			/>
-		{/each}
-	</svg>
+
+
+
+
+
+
+<div class="relative overflow-hidden rounded-2xl bg-slate-950">
+    {#if gameOver}
+        <div class="pointer-events-none absolute inset-0 z-30 flex items-center justify-center">
+            <div class="rounded-lg border border-slate-500 bg-slate-950/90 px-5 py-2 text-xl font-bold tracking-wider text-red-300">
+                GAME OVER
+            </div>
+        </div>
+    {/if}
+    
+    <div class="triangle-board">
+        <svg
+            class={[
+                'triangle-svg',
+                clearingCells && !exploding ? 'opacity-0' : ''
+            ].join(' ')}
+            viewBox={`0 0 ${boardWidth} ${boardHeight}`}
+            preserveAspectRatio="xMidYMid meet"
+            role="grid"
+            aria-label="Triangle board"
+        >
+            {#each cells as cell}
+                <polygon
+                    points={cell.points}
+                    fill={getSvgFill(cell.state)}
+                    class="triangle-cell"
+                    role="button"
+                    tabindex="0"
+                    aria-label={`Toggle triangle ${cell.row + 1}, ${cell.col + 1}`}
+                    onclick={() => toggleCell(cell.id)}
+                    onkeydown={(event) => {
+                        if (event.key === 'Enter' || event.key === ' ') {
+                            event.preventDefault();
+                            toggleCell(cell.id);
+                        }
+                    }}
+                />
+            {/each}
+        </svg>
+        {#if clearingCells && clearingBoardWidth && clearingBoardHeight}
+            <svg
+                class="triangle-svg clearing-svg"
+                viewBox={`0 0 ${clearingBoardWidth} ${clearingBoardHeight}`}
+                preserveAspectRatio="xMidYMid meet"
+            >
+                {#each clearingCells as cell}
+                    <polygon
+                        points={cell.points}
+                        fill={getSvgFill(cell.state, clearingPalette ?? palette)}
+                        class={['triangle-cell clearing-cell', exploding ? 'explode-triangle-cell' : ''].join(' ')}
+                        style={`--tx:${(cell.centerX - clearingBoardWidth / 2) * 0.9}px; --ty:${(cell.centerY - clearingBoardHeight / 2) * 0.9}px;`}
+                    />
+                {/each}
+                {#if solved && !exploding}
+                    {#each solvedModes as mode}
+                        <polyline
+                            points={getTriangleLinePointsForBoard(
+                                mode,
+                                clearingBoardWidth,
+                                clearingBoardHeight
+                            )}
+                            class="solved-line draw-solved-line"
+                        />
+                    {/each}
+                {/if}
+            </svg>
+        {/if}
+    </div>
 </div>
 
 
 <style>
-	.triangle-board {
-		width: 100%;
-		aspect-ratio: 1 / 1;
-		border-radius: 1rem;
-		background: rgb(30 41 59);
-		padding: 0.5rem;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-	}
+    .triangle-board {
+        position: relative;
+        width: 100%;
+        aspect-ratio: 1 / 1;
+        border-radius: 1rem;
+        background: rgb(30 41 59);
+        padding: 0.5rem;
+    }
 
-	.triangle-svg {
-		width: 100%;
-		height: 100%;
-		overflow: visible;
-	}
+    .triangle-svg {
+        position: absolute;
+        inset: 0.5rem;
+        width: calc(100% - 1rem);
+        height: calc(100% - 1rem);
+        overflow: visible;
+    }
 
-	.triangle-cell {
-		cursor: pointer;
-		transition:
-			opacity 0.15s ease,
-			transform 0.15s ease;
-		transform-box: fill-box;
-		transform-origin: center;
-		stroke: rgba(15, 23, 42, 0.45);
-		stroke-width: 0.025;
-	}
+    .clearing-svg {
+        pointer-events: none;
+        z-index: 10;
+    }
 
-	.triangle-cell:hover {
-		opacity: 0.85;
-		transform: scale(0.96);
-	}
+    .triangle-cell {
+        cursor: pointer;
+        transition: opacity 0.15s ease;
+        stroke: rgba(15, 23, 42, 0.45);
+        stroke-width: 0.025;
+    }
 
-	.triangle-cell:focus {
-		outline: none;
-		stroke: white;
-		stroke-width: 0.05;
-	}
+    .triangle-cell:hover {
+        opacity: 0.85;
+    }
+
+    .triangle-cell:focus,
+    .triangle-cell:focus-visible {
+        outline: none;
+    }
+
+    .solved-line {
+        fill: none;
+        stroke: white;
+        stroke-width: 0.035;
+        stroke-linecap: round;
+        filter: drop-shadow(0 0 0.05px white);
+        pointer-events: none;
+        stroke-dasharray: 10;
+        stroke-dashoffset: 10;
+    }
+
+    .draw-solved-line {
+        animation: draw-solved-line 0.45s ease-out forwards;
+    }
+
+    @keyframes draw-solved-line {
+        to {
+            stroke-dashoffset: 0;
+        }
+    }
+
+    .clearing-cell {
+        pointer-events: none;
+        transform-box: fill-box;
+        transform-origin: center;
+    }
+
+    .explode-triangle-cell {
+        animation: explode-triangle-cell 0.7s ease-in forwards;
+    }
+
+    @keyframes explode-triangle-cell {
+        to {
+            transform:
+                translate(var(--tx), var(--ty))
+                rotate(220deg)
+                scale(0.35);
+            opacity: 0;
+        }
+    }
+
+    .clearing-svg {
+        pointer-events: none;
+        z-index: 10;
+    }
 </style>
