@@ -5,7 +5,7 @@
         Palette,
         LevelSettings
     } from '$lib/types';
-    
+
 	type LineStyle = 'vertical' | 'horizontal' | 'diagonalDown' | 'diagonalUp';
 
 	type SymmetryMode =
@@ -281,15 +281,39 @@
 		return scrambled;
 	}
 
-	function newPuzzle() {
-		if (gameOver) return;
+    function newPuzzle() {
+        if (gameOver) return;
 
-		const actualGenerationMode = getRandomCreationMode();
-		const solution = createSymmetryGrid(actualGenerationMode);
+        const maxAttempts = 10;
 
-		solutionGrid = solution;
-		grid = scrambleGrid(solution, level.scrambleFlips, actualGenerationMode);
-	}
+        for (let attempt = 0; attempt < maxAttempts; attempt++) {
+            const actualGenerationMode = getRandomCreationMode();
+            const solution = createSymmetryGrid(actualGenerationMode);
+            const scrambled = scrambleGrid(
+                solution,
+                level.scrambleFlips,
+                actualGenerationMode
+            );
+
+            const solvedSymmetries = checkSolvedSymmetries(scrambled);
+
+            const isAlreadySolved =
+                validSolutionModes.some((mode) => solvedSymmetries[mode]);
+
+            if (!isAlreadySolved) {
+                solutionGrid = solution;
+                grid = scrambled;
+                return;
+            }
+        }
+
+        // fallback
+        const actualGenerationMode = getRandomCreationMode();
+        const solution = createSymmetryGrid(actualGenerationMode);
+
+        solutionGrid = solution;
+        grid = scrambleGrid(solution, level.scrambleFlips + 1, actualGenerationMode);
+    }
 
 	async function toggleCell(row: number, col: number) {
 		if (solved || gameOver) return;

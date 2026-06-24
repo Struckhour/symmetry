@@ -9,6 +9,8 @@ export type Palette = {
 	orange: string;
 };
 
+export type BoardType = 'square' | 'triangle' | 'random';
+
 export type LevelSettings = {
 	threshold: number;
 	levelText: string;
@@ -16,5 +18,9 @@ export type LevelSettings = {
 	scrambleFlips: number;
 	solveBonusSeconds: number;
 	creationModes: ConcreteSymmetryMode[];
-	colors: Palette;
+	boardType: BoardType;
+	colors: {
+		blue: string;
+		orange: string;
+	};
 };

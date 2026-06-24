@@ -309,6 +309,7 @@
 			'bg-yellow-400': '#facc15',
 			'bg-emerald-800': '#065f46',
 			'bg-pink-400': '#f472b6',
+            'bg-cyan-800': '#155e75',
 			'bg-slate-700': '#334155',
 			'bg-slate-300': '#cbd5e1'
 		};
@@ -467,14 +468,35 @@
         };
     }
 
+    function hasAnySolvedTriangleSymmetry(): boolean {
+        const solvedSymmetries = checkTriangleSolvedSymmetries();
+
+        return triangleSymmetryModes.some((mode) => solvedSymmetries[mode]);
+    }
+
     function newTrianglePuzzle() {
+        const maxAttempts = 10;
+
+        for (let attempt = 0; attempt < maxAttempts; attempt++) {
+            cells = createTriangleCells();
+
+            currentPuzzleMode = resolveTriangleSymmetryMode(creationMode);
+
+            createTriangleSymmetryBoard(currentPuzzleMode);
+            scrambleTriangleBoard(level.scrambleFlips, currentPuzzleMode);
+
+            if (!hasAnySolvedTriangleSymmetry()) {
+                return;
+            }
+        }
+
+        // fallback
         cells = createTriangleCells();
 
-        currentPuzzleMode =
-            resolveTriangleSymmetryMode(creationMode);
+        currentPuzzleMode = resolveTriangleSymmetryMode(creationMode);
 
         createTriangleSymmetryBoard(currentPuzzleMode);
-        scrambleTriangleBoard(level.scrambleFlips, currentPuzzleMode);
+        scrambleTriangleBoard(level.scrambleFlips + 1, currentPuzzleMode);
     }
 
     function getTriangleAxisForBoard(
