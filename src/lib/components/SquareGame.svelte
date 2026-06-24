@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
+	import { onMount, onDestroy } from 'svelte';
     import type {
         ConcreteSymmetryMode,
         Palette,
@@ -66,6 +66,12 @@
 		'squareDiagonalDown',
 		'squareDiagonalUp'
 	];
+
+    let mounted = true;
+
+    onDestroy(() => {
+        mounted = false;
+    });
 
 	onMount(() => {
 		newPuzzle();
@@ -339,12 +345,12 @@
 		onSolve(bonus);
 
 		await new Promise((resolve) => setTimeout(resolve, 450));
-
+        if (!mounted) return;
 		newPuzzle();
 		exploding = true;
 
 		await new Promise((resolve) => setTimeout(resolve, 700));
-
+        if (!mounted) return;
 		clearingGrid = null;
 		clearingPalette = null;
 		clearingSize = null;

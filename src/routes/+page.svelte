@@ -62,7 +62,7 @@
 			threshold: 40,
 			levelText: 'Level 2: Horizontal Symmetry',
 			boardType: 'square',
-			size: 5,
+			size: 4,
 			scrambleFlips: 1,
 			solveBonusSeconds: 10,
 			creationModes: ['squareHorizontal'],
@@ -75,8 +75,8 @@
 			threshold: 80,
 			levelText: 'Level 3: Diagonal Symmetry',
 			boardType: 'square',
-			size: 5,
-			scrambleFlips: 2,
+			size: 4,
+			scrambleFlips: 1,
 			solveBonusSeconds: 12,
 			creationModes: ['squareDiagonalDown', 'squareDiagonalUp'],
 			colors: {
@@ -86,12 +86,12 @@
 		},
 		{
 			threshold: 120,
-			levelText: 'Level 1: Vertical Symmetry',
+			levelText: 'Level 4: Triangles!',
 			boardType: 'triangle',
 			size: 4,
 			scrambleFlips: 1,
 			solveBonusSeconds: 8,
-			creationModes: ['squareVertical'],
+			creationModes: [],
 			colors: {
 				blue: 'bg-cyan-800',
 				orange: 'bg-yellow-400'
@@ -302,23 +302,37 @@
 			class="rounded-3xl p-2 transition-all"
 			style={`background: conic-gradient(from 0deg, ${timerForeground} ${timerDegrees}deg, ${timerBackground} ${timerDegrees}deg 360deg);`}
 		>
-		{#if activeBoardType === 'square'}
-			<SquareGame
-				{gameId}
-				level={currentLevel}
-				palette={getPalette()}
-				{gameOver}
-				onSolve={handleSolve}
-			/>
-		{:else}
-			<TriangleGame
-				{gameId}
-				level={currentLevel}
-				palette={getPalette()}
-				{gameOver}
-				onSolve={handleSolve}
-			/>
-		{/if}
+			
+			{#if activeBoardType === 'square'}
+				<SquareGame
+					{gameId}
+					level={currentLevel}
+					palette={getPalette()}
+					{gameOver}
+					onSolve={handleSolve}
+				/>
+			{:else}
+				<TriangleGame
+					{gameId}
+					level={currentLevel}
+					palette={getPalette()}
+					{gameOver}
+					onSolve={handleSolve}
+				/>
+			{/if}
+		
 		</div>
 	</section>
 </main>
+
+<style>
+	.slow-board-rotate {
+		animation: slow-board-rotate 180s linear infinite;
+	}
+
+	@keyframes slow-board-rotate {
+		to {
+			transform: rotate(360deg);
+		}
+	}
+</style>
