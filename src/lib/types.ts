@@ -16,11 +16,14 @@ export type LevelSettings = {
 	levelText: string;
 	size: number;
 	scrambleFlips: number;
-	solveBonusSeconds: number;
 	creationModes: ConcreteSymmetryMode[];
 	boardType: BoardType;
 	colors: {
 		blue: string;
 		orange: string;
 	};
+	solveBonusSeconds: number;
+	solveScorePoints: number;
+	levelCompletionTimeBonus: number;
+	levelCompletionScoreBonus: number;
 };

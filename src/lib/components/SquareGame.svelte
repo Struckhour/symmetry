@@ -343,13 +343,12 @@
 		solved = true;
 
 		const symmetryCount = countSolvedSymmetries(solvedSymmetries);
-		const bonus = symmetryCount * level.solveBonusSeconds;
 
 		clearingGrid = cloneGrid(grid);
 		clearingPalette = palette;
 		clearingSize = size;
 
-		onSolve(bonus);
+		onSolve(symmetryCount);
 
 		await new Promise((resolve) => setTimeout(resolve, 450));
         if (!mounted) return;

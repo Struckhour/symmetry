@@ -9,7 +9,7 @@
 
 
 
-	const startingTimeSeconds = 5;
+	const startingTimeSeconds = 45;
 	const secondsPerWrap = 60;
 
 	const timerColors = [
@@ -52,6 +52,9 @@
 			size: 4,
 			scrambleFlips: 1,
 			solveBonusSeconds: 8,
+			solveScorePoints: 8,
+			levelCompletionTimeBonus: 15,
+			levelCompletionScoreBonus: 0,
 			creationModes: ['squareVertical'],
 			colors: {
 				blue: 'bg-blue-800',
@@ -65,6 +68,9 @@
 			size: 4,
 			scrambleFlips: 1,
 			solveBonusSeconds: 10,
+			solveScorePoints: 8,
+			levelCompletionTimeBonus: 15,
+			levelCompletionScoreBonus: 0,
 			creationModes: ['squareHorizontal'],
 			colors: {
 				blue: 'bg-purple-800',
@@ -78,6 +84,9 @@
 			size: 4,
 			scrambleFlips: 1,
 			solveBonusSeconds: 12,
+			solveScorePoints: 8,
+			levelCompletionTimeBonus: 20,
+			levelCompletionScoreBonus: 0,
 			creationModes: ['squareDiagonalDown', 'squareDiagonalUp'],
 			colors: {
 				blue: 'bg-emerald-800',
@@ -91,6 +100,9 @@
 			size: 4,
 			scrambleFlips: 1,
 			solveBonusSeconds: 8,
+			solveScorePoints: 8,
+			levelCompletionTimeBonus: 10,
+			levelCompletionScoreBonus: 20,
 			creationModes: [],
 			colors: {
 				blue: 'bg-cyan-800',
@@ -183,11 +195,9 @@
 		);
 	}
 
-	function handleSolve(bonus: number) {
-		timeLeft = timeLeft + bonus;
-
-		const nextScore = score + bonus;
-		score = nextScore;
+	function handleSolve(symmetryCount: number) {
+		const solvePoints = symmetryCount * currentLevel.solveScorePoints;
+		let nextScore = score + solvePoints;
 
 		const nextLevelIndex = levels.findLastIndex(
 			(level) => nextScore >= level.threshold
@@ -196,12 +206,19 @@
 		const leveledUp = nextLevelIndex > currentLevelIndex;
 
 		if (leveledUp) {
+			const completedLevel = currentLevel;
+
+			nextScore += completedLevel.levelCompletionScoreBonus;
+			timeLeft += completedLevel.levelCompletionTimeBonus;
+
 			playSound(levelUpSound);
 			currentLevelIndex = nextLevelIndex;
 			chooseBoardTypeForLevel();
 		} else {
 			playSound(solveSound);
 		}
+
+		score = nextScore;
 
 		if (nextScore > highScore) {
 			highScore = nextScore;

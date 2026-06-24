@@ -274,15 +274,13 @@
 
         solved = true;
 
-        const bonus = solvedModes.length * level.solveBonusSeconds;
-
         clearingCells = cells.map((cell) => ({ ...cell }));
         clearingPalette = palette;
         clearingSize = size;
         clearingBoardWidth = boardWidth;
         clearingBoardHeight = boardHeight;
 
-        onSolve(bonus);
+        onSolve(solvedModes.length);
 
         await new Promise((resolve) => setTimeout(resolve, 450));
 
