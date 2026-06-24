@@ -80,6 +80,13 @@
 
 	let cells = $state<TriangleCell[]>(createTriangleCells());
 
+    function handleCellPointerUp(event: PointerEvent, id: string) {
+        if (!event.isPrimary) return;
+
+        event.preventDefault();
+        toggleCell(id);
+    }
+
     function getTrianglePairs(mode: TriangleSymmetryMode): TriangleMirrorPair[] {
         const pairs: TriangleMirrorPair[] = [];
         const usedIds = new Set<string>();
@@ -602,7 +609,7 @@
                     role="button"
                     tabindex="0"
                     aria-label={`Toggle triangle ${cell.row + 1}, ${cell.col + 1}`}
-                    onclick={() => toggleCell(cell.id)}
+                    onpointerup={(event) => handleCellPointerUp(event, cell.id)}
                     onkeydown={(event) => {
                         if (event.key === 'Enter' || event.key === ' ') {
                             event.preventDefault();
@@ -672,6 +679,7 @@
         transition: opacity 0.15s ease;
         stroke: rgba(15, 23, 42, 0.45);
         stroke-width: 0.025;
+        pointer-events: auto;
     }
 
     .triangle-cell:hover {
@@ -728,4 +736,14 @@
         pointer-events: none;
         z-index: 10;
     }
+
+    .triangle-board,
+    .triangle-svg,
+    .triangle-cell {
+        touch-action: none;
+        user-select: none;
+        -webkit-user-select: none;
+        -webkit-tap-highlight-color: transparent;
+    }
+
 </style>

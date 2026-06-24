@@ -120,6 +120,7 @@
 	}
 
 	onMount(() => {
+		chooseBoardTypeForLevel();
 		solveSound = new Audio('/sounds/powerup.wav');
 		levelUpSound = new Audio('/sounds/levelup.wav');
 		gameOverSound = new Audio('/sounds/game_over.wav');
@@ -224,11 +225,11 @@
 	}
 </script>
 
-<main class="flex min-h-screen items-center justify-center bg-slate-950 p-6 text-white">
+<main class="flex min-h-screen items-center justify-center bg-slate-950 p-3 text-white sm:p-6">
 	<section class="w-full max-w-180">
 		<h1 class="mb-4 text-center text-3xl font-bold">Reflektions</h1>
 
-		<div class="mb-4 flex justify-center gap-10 text-2xl font-bold">
+		<div class="mb-4 flex flex-wrap justify-center gap-x-6 gap-y-2 text-xl font-bold sm:gap-10 sm:text-2xl">
 			<div>Score: {score}</div>
 			<div>Best: {highScore}</div>
 
@@ -239,10 +240,10 @@
 			{/if}
 		</div>
 
-		<div class="mb-4 flex justify-center gap-3">
+		<div class="mb-4 flex flex-wrap items-center justify-center gap-3">
 			<button
 				type="button"
-				class="rounded bg-slate-700 px-4 py-2 hover:bg-slate-600"
+				class="min-h-11 rounded bg-slate-700 px-4 py-2 touch-manipulation select-none hover:bg-slate-600"
 				onclick={resetGame}
 			>
 				New Game
@@ -257,15 +258,15 @@
 					aria-checked={colorMode !== 'greyscale'}
 					aria-label="Toggle colour mode"
 					class={[
-						'relative h-7 w-14 rounded-full transition-colors',
+						'relative h-8 w-16 rounded-full transition-colors touch-manipulation select-none',
 						colorMode !== 'greyscale' ? 'bg-green-500' : 'bg-slate-600'
 					].join(' ')}
 					onclick={toggleColorMode}
 				>
 					<div
 						class={[
-							'absolute top-1 h-5 w-5 rounded-full bg-white transition-all',
-							colorMode !== 'greyscale' ? 'left-8' : 'left-1'
+							'absolute top-1 h-6 w-6 rounded-full bg-white transition-all',
+							colorMode !== 'greyscale' ? 'left-9' : 'left-1'
 						].join(' ')}
 					></div>
 				</button>
@@ -279,15 +280,15 @@
 					aria-checked={sfxEnabled}
 					aria-label="Toggle sound effects"
 					class={[
-						'relative h-7 w-14 rounded-full transition-colors',
+						'relative h-8 w-16 rounded-full transition-colors touch-manipulation select-none',
 						sfxEnabled ? 'bg-green-500' : 'bg-slate-600'
 					].join(' ')}
 					onclick={toggleSfx}
 				>
 					<div
 						class={[
-							'absolute top-1 h-5 w-5 rounded-full bg-white transition-all',
-							sfxEnabled ? 'left-8' : 'left-1'
+							'absolute top-1 h-6 w-6 rounded-full bg-white transition-all',
+							sfxEnabled ? 'left-9' : 'left-1'
 						].join(' ')}
 					></div>
 				</button>

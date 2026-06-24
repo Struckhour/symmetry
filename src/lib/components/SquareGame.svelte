@@ -94,6 +94,13 @@
 		newPuzzle();
 	}
 
+	function handleCellPointerUp(event: PointerEvent, row: number, col: number) {
+		if (!event.isPrimary) return;
+
+		event.preventDefault();
+		toggleCell(row, col);
+	}
+
 	function isSymmetrical(source: CellState[][], pairs: MirrorPair[]) {
 		for (const pair of pairs) {
 			if (source[pair.a.row][pair.a.col] !== source[pair.b.row][pair.b.col]) {
@@ -397,11 +404,11 @@
 					aria-label={`Toggle cell ${rowIndex + 1}, ${colIndex + 1}`}
 					disabled={solved || gameOver}
 					class={[
-						'aspect-square rounded-lg transition-all duration-700 hover:scale-95 focus:outline-none focus:ring-2 focus:ring-white',
+						'aspect-square rounded-lg touch-manipulation select-none transition-all duration-700 hover:scale-95 focus:outline-none focus:ring-2 focus:ring-white active:scale-95',
 						getCellClass(cell),
 						solved ? 'animate-pulse' : ''
 					].join(' ')}
-					onclick={() => toggleCell(rowIndex, colIndex)}
+					onpointerup={(event) => handleCellPointerUp(event, rowIndex, colIndex)}
 				></button>
 			{/each}
 		{/each}
@@ -462,6 +469,14 @@
 	.board-square {
 		display: grid;
 		grid-template-columns: repeat(var(--size), minmax(0, 1fr));
+	}
+
+	.board-square,
+	.board-square button {
+		touch-action: manipulation;
+		user-select: none;
+		-webkit-user-select: none;
+		-webkit-tap-highlight-color: transparent;
 	}
 
 	.draw-vertical-line {
@@ -555,4 +570,6 @@
 			opacity: 0;
 		}
 	}
+
+	
 </style>
