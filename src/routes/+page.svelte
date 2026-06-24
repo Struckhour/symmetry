@@ -9,20 +9,20 @@
 
 
 
-	const startingTimeSeconds = 45;
+	const startingTimeSeconds = 30;
 	const secondsPerWrap = 60;
 
 	const timerColors = [
 		'rgb(255 255 110)', // yellow, final minute only
-		'rgb(249 115 22)',  // orange
-		'rgb(239 68 68)',   // red
-		'rgb(236 72 153)',  // pink
 		'rgb(168 85 247)',  // purple
+		'rgb(249 115 22)',  // orange
 		'rgb(59 130 246)',  // blue
+		'rgb(239 68 68)',   // red
 		'rgb(20 184 166)',  // teal
+		'rgb(236 72 153)',  // pink
 		'rgb(34 197 94)',   // green
+		'rgb(245 158 11)',   // amber
 		'rgb(132 204 22)',  // lime
-		'rgb(245 158 11)'   // amber
 	];
 	let timeLeft = $state(startingTimeSeconds);
 	let currentWrapIndex = $derived(Math.max(0, Math.ceil(timeLeft / secondsPerWrap) - 1));
@@ -34,7 +34,7 @@
 			? 'rgb(71 85 105)'
 			: timerColors[(currentWrapIndex - 1) % timerColors.length]
 	);
-
+	let boardFadeKey = $state(0);
 	let highScore = $state(0);
 	let score = $state(0);
 	
@@ -51,8 +51,8 @@
 			boardType: 'square',
 			size: 4,
 			scrambleFlips: 1,
-			solveBonusSeconds: 8,
-			solveScorePoints: 8,
+			solveBonusSeconds: 2,
+			solveScorePoints: 1,
 			levelCompletionTimeBonus: 15,
 			levelCompletionScoreBonus: 0,
 			creationModes: ['squareVertical'],
@@ -62,13 +62,13 @@
 			}
 		},
 		{
-			threshold: 40,
+			threshold: 5,
 			levelText: 'Level 2: Horizontal Symmetry',
-			boardType: 'square',
+			boardType: 'triangle',
 			size: 4,
 			scrambleFlips: 1,
-			solveBonusSeconds: 10,
-			solveScorePoints: 8,
+			solveBonusSeconds: 2,
+			solveScorePoints: 1,
 			levelCompletionTimeBonus: 15,
 			levelCompletionScoreBonus: 0,
 			creationModes: ['squareHorizontal'],
@@ -78,14 +78,14 @@
 			}
 		},
 		{
-			threshold: 80,
+			threshold: 10,
 			levelText: 'Level 3: Diagonal Symmetry',
 			boardType: 'square',
 			size: 4,
 			scrambleFlips: 1,
-			solveBonusSeconds: 12,
-			solveScorePoints: 8,
-			levelCompletionTimeBonus: 20,
+			solveBonusSeconds: 2,
+			solveScorePoints: 1,
+			levelCompletionTimeBonus: 15,
 			levelCompletionScoreBonus: 0,
 			creationModes: ['squareDiagonalDown', 'squareDiagonalUp'],
 			colors: {
@@ -94,19 +94,83 @@
 			}
 		},
 		{
-			threshold: 120,
+			threshold: 15,
 			levelText: 'Level 4: Triangles!',
-			boardType: 'triangle',
+			boardType: 'square',
 			size: 4,
 			scrambleFlips: 1,
-			solveBonusSeconds: 8,
-			solveScorePoints: 8,
-			levelCompletionTimeBonus: 10,
-			levelCompletionScoreBonus: 20,
-			creationModes: [],
+			solveBonusSeconds: 2,
+			solveScorePoints: 1,
+			levelCompletionTimeBonus: 15,
+			levelCompletionScoreBonus: 0,
+			creationModes: ['squareDiagonalDown', 'squareDiagonalUp', 'squareHorizontal', 'squareVertical'],
 			colors: {
 				blue: 'bg-cyan-800',
 				orange: 'bg-yellow-400'
+			}
+		},
+		{
+			threshold: 20,
+			levelText: 'Level 5',
+			boardType: 'square',
+			size: 5,
+			scrambleFlips: 2,
+			solveBonusSeconds: 3,
+			solveScorePoints: 1,
+			levelCompletionTimeBonus: 15,
+			levelCompletionScoreBonus: 0,
+			creationModes: ['squareDiagonalDown', 'squareDiagonalUp', 'squareHorizontal', 'squareVertical'],
+			colors: {
+				blue: 'bg-grey-950',
+				orange: 'bg-teal-400'
+			}
+		},
+		{
+			threshold: 25,
+			levelText: 'Level 6',
+			boardType: 'square',
+			size: 6,
+			scrambleFlips: 2,
+			solveBonusSeconds: 3,
+			solveScorePoints: 1,
+			levelCompletionTimeBonus: 30,
+			levelCompletionScoreBonus: 0,
+			creationModes: ['squareDiagonalDown', 'squareDiagonalUp', 'squareHorizontal', 'squareVertical'],
+			colors: {
+				blue: 'bg-purple-800',
+				orange: 'bg-orange-400'
+			}
+		},
+		{
+			threshold: 30,
+			levelText: 'Level 7',
+			boardType: 'square',
+			size: 5,
+			scrambleFlips: 2,
+			solveBonusSeconds: 3,
+			solveScorePoints: 1,
+			levelCompletionTimeBonus: 30,
+			levelCompletionScoreBonus: 0,
+			creationModes: ['squareDiagonalDown', 'squareDiagonalUp', 'squareHorizontal', 'squareVertical'],
+			colors: {
+				blue: 'bg-pink-900',
+				orange: 'bg-lime-200'
+			}
+		},
+		{
+			threshold: 35,
+			levelText: 'Level 8',
+			boardType: 'triangle',
+			size: 4,
+			scrambleFlips: 1,
+			solveBonusSeconds: 1,
+			solveScorePoints: 1,
+			levelCompletionTimeBonus: 10,
+			levelCompletionScoreBonus: 0,
+			creationModes: [],
+			colors: {
+				blue: 'bg-blue-800',
+				orange: 'bg-orange-400'
 			}
 		},
 
@@ -195,8 +259,13 @@
 		);
 	}
 
+	let pendingBoardSwitch = $state(false);
 	function handleSolve(symmetryCount: number) {
+		const solveTimeBonus = symmetryCount * currentLevel.solveBonusSeconds;
 		const solvePoints = symmetryCount * currentLevel.solveScorePoints;
+
+		timeLeft += solveTimeBonus;
+
 		let nextScore = score + solvePoints;
 
 		const nextLevelIndex = levels.findLastIndex(
@@ -212,8 +281,17 @@
 			timeLeft += completedLevel.levelCompletionTimeBonus;
 
 			playSound(levelUpSound);
-			currentLevelIndex = nextLevelIndex;
-			chooseBoardTypeForLevel();
+
+			pendingBoardSwitch = true;
+
+			setTimeout(() => {
+				currentLevelIndex = nextLevelIndex;
+				chooseBoardTypeForLevel();
+
+				pendingBoardSwitch = false;
+				gameId += 1;
+				boardFadeKey += 1;
+			}, 1150);
 		} else {
 			playSound(solveSound);
 		}
@@ -321,23 +399,29 @@
 			style={`background: conic-gradient(from 0deg, ${timerForeground} ${timerDegrees}deg, ${timerBackground} ${timerDegrees}deg 360deg);`}
 		>
 			
-			{#if activeBoardType === 'square'}
-				<SquareGame
-					{gameId}
-					level={currentLevel}
-					palette={getPalette()}
-					{gameOver}
-					onSolve={handleSolve}
-				/>
-			{:else}
-				<TriangleGame
-					{gameId}
-					level={currentLevel}
-					palette={getPalette()}
-					{gameOver}
-					onSolve={handleSolve}
-				/>
-			{/if}
+			{#key boardFadeKey}
+				<div class="animate-board-fade-in">
+					{#if activeBoardType === 'square'}
+						<SquareGame
+							{gameId}
+							level={currentLevel}
+							palette={getPalette()}
+							{gameOver}
+							onSolve={handleSolve}
+							hideNextBoard={pendingBoardSwitch}
+						/>
+					{:else}
+						<TriangleGame
+							{gameId}
+							level={currentLevel}
+							palette={getPalette()}
+							{gameOver}
+							onSolve={handleSolve}
+							hideNextBoard={pendingBoardSwitch}
+						/>
+					{/if}
+				</div>
+			{/key}
 		
 		</div>
 	</section>
@@ -351,6 +435,22 @@
 	@keyframes slow-board-rotate {
 		to {
 			transform: rotate(360deg);
+		}
+	}
+
+	.animate-board-fade-in {
+		animation: board-fade-in 0.3s ease-out both;
+	}
+
+	@keyframes board-fade-in {
+		from {
+			opacity: 0;
+			transform: scale(0.98);
+		}
+
+		to {
+			opacity: 1;
+			transform: scale(1);
 		}
 	}
 </style>

@@ -53,6 +53,7 @@
         palette,
         gameOver,
         onSolve,
+        hideNextBoard = false
     }: {
         gameId: number;
         level: {
@@ -63,6 +64,7 @@
         palette: Palette;
         gameOver: boolean;
         onSolve: (bonus: number) => void;
+        hideNextBoard: boolean;
     } = $props();
 
     let size = $derived(level.size);
@@ -283,8 +285,9 @@
         onSolve(solvedModes.length);
 
         await new Promise((resolve) => setTimeout(resolve, 450));
-
-        newTrianglePuzzle();
+        if (!hideNextBoard) {
+            newTrianglePuzzle();
+        }
         exploding = true;
 
         await new Promise((resolve) => setTimeout(resolve, 700));

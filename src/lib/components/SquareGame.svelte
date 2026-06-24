@@ -39,13 +39,15 @@
 		level,
 		palette,
 		gameOver,
-		onSolve
+		onSolve,
+		hideNextBoard = false
 	}: {
 		gameId: number;
 		level: LevelSettings;
 		palette: Palette;
 		gameOver: boolean;
 		onSolve: (bonus: number) => void;
+		hideNextBoard: boolean;
 	} = $props();
 
 	let size = $derived(level.size);
@@ -352,7 +354,10 @@
 
 		await new Promise((resolve) => setTimeout(resolve, 450));
         if (!mounted) return;
-		newPuzzle();
+		if (!hideNextBoard) {
+			newPuzzle();
+		}
+
 		exploding = true;
 
 		await new Promise((resolve) => setTimeout(resolve, 700));
@@ -389,13 +394,14 @@
 		</div>
 	{/if}
 
-	<div
-		class={[
-			'board board-square aspect-square w-full gap-2 rounded-2xl bg-slate-800 p-3 shadow-xl transition-all duration-500',
-			solved ? 'scale-[1.02] shadow-orange-400/80 ring-4 ring-orange-300' : ''
-		].join(' ')}
-		style={`--size:${size};`}
-	>
+		<div
+			class={[
+				'board board-square aspect-square w-full gap-2 rounded-2xl bg-slate-800 p-3 shadow-xl transition-all duration-500',
+				solved ? 'scale-[1.02] shadow-orange-400/80 ring-4 ring-orange-300' : '',
+				hideNextBoard && exploding ? 'opacity-0' : ''
+			].join(' ')}
+			style={`--size:${size};`}
+		>
 		{#each grid as row, rowIndex}
 			{#each row as cell, colIndex}
 				<button
