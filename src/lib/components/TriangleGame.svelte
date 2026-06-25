@@ -53,6 +53,7 @@
         palette,
         gameOver,
         onSolve,
+        onCellChange,
         hideNextBoard = false
     }: {
         gameId: number;
@@ -63,7 +64,8 @@
         };
         palette: Palette;
         gameOver: boolean;
-        onSolve: (bonus: number) => void;
+        onSolve: (solvedModes: ConcreteTriangleSymmetryMode[]) => void;
+        onCellChange: () => void;
         hideNextBoard: boolean;
     } = $props();
 
@@ -265,7 +267,7 @@
                     }
                 : cell
         );
-
+        onCellChange();
         const solvedSymmetries = checkTriangleSolvedSymmetries();
 
         solvedModes = Object.entries(solvedSymmetries)
@@ -282,7 +284,7 @@
         clearingBoardWidth = boardWidth;
         clearingBoardHeight = boardHeight;
 
-        onSolve(solvedModes.length);
+        onSolve(solvedModes);
 
         await new Promise((resolve) => setTimeout(resolve, 450));
         if (!hideNextBoard) {

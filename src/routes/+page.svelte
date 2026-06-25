@@ -42,7 +42,12 @@
 	let colorMode = $state<ColorMode>('theme');
 	let currentLevelIndex = $state(0);
 	let gameId = $state(0);
-	let sfxEnabled = $state(true);
+
+
+	let settingsOpen = $state(false);
+	let sfxVolume = $state(0.5);
+	let musicVolume = $state(0.4);
+
 
 	const levels: LevelSettings[] = [
 		{
@@ -121,7 +126,7 @@
 			levelCompletionScoreBonus: 0,
 			creationModes: ['squareDiagonalDown', 'squareDiagonalUp', 'squareHorizontal', 'squareVertical'],
 			colors: {
-				blue: 'bg-grey-950',
+				blue: 'bg-gray-900',
 				orange: 'bg-teal-400'
 			}
 		},
@@ -137,8 +142,8 @@
 			levelCompletionScoreBonus: 0,
 			creationModes: ['squareDiagonalDown', 'squareDiagonalUp', 'squareHorizontal', 'squareVertical'],
 			colors: {
-				blue: 'bg-purple-800',
-				orange: 'bg-orange-400'
+				blue: 'bg-purple-900',
+				orange: 'bg-orange-300'
 			}
 		},
 		{
@@ -177,10 +182,18 @@
 	];
 
 	let currentLevel = $derived(levels[currentLevelIndex]);
-	let solveSound: HTMLAudioElement;
+	let solveSound1: HTMLAudioElement;
+	let solveSound2: HTMLAudioElement;
+	let solveSound3: HTMLAudioElement;
+	let multiSolveSound: HTMLAudioElement;
 	let levelUpSound: HTMLAudioElement;
 	let gameOverSound: HTMLAudioElement;
+	let gameMusic: HTMLAudioElement;
+	let gameStarted = $state(false);
+	let cellClickSound: HTMLAudioElement;
 	type ConcreteBoardType = 'square' | 'triangle';
+
+
 
 	function getRandomBoardType(): ConcreteBoardType {
 		return Math.random() < 0.5 ? 'square' : 'triangle';
@@ -195,36 +208,80 @@
 				: currentLevel.boardType;
 	}
 
+
+	function setSfxVolume(value: number) {
+		sfxVolume = value;
+		localStorage.setItem('reflektions-sfx-volume', String(sfxVolume));
+
+		solveSound1.volume = sfxVolume;
+		solveSound2.volume = sfxVolume;
+		solveSound3.volume = sfxVolume;
+		multiSolveSound.volume = sfxVolume;
+		levelUpSound.volume = sfxVolume;
+		gameOverSound.volume = sfxVolume;
+		cellClickSound.volume = sfxVolume * 0.5;
+	}
+
+	function setMusicVolume(value: number) {
+		musicVolume = value;
+		localStorage.setItem('reflektions-music-volume', String(musicVolume));
+
+		if (gameMusic) {
+			gameMusic.volume = musicVolume;
+		}
+	}
+
 	onMount(() => {
 		chooseBoardTypeForLevel();
-		solveSound = new Audio('/sounds/powerup.wav');
+		solveSound1 = new Audio('/sounds/symmetry_solve_1.mp3');
+		solveSound2 = new Audio('/sounds/symmetry_solve_2.mp3');
+		solveSound3 = new Audio('/sounds/symmetry_solve_3.mp3');
+		multiSolveSound = new Audio('/sounds/powerup.wav');
+		gameMusic = new Audio('/sounds/peaceful_symmetry.mp3');
 		levelUpSound = new Audio('/sounds/levelup.wav');
 		gameOverSound = new Audio('/sounds/game_over.wav');
-		gameOverSound.volume = 0.5;
-		levelUpSound.volume = 0.5;
-		solveSound.volume = 0.5;
-		const savedSfx = localStorage.getItem('reflektions-sfx-enabled');
-		if (savedSfx !== null) {
-			sfxEnabled = savedSfx === 'true';
-		}
+		cellClickSound = new Audio('/sounds/symmetry_click_1.mp3');
+
+		gameMusic.loop = true;
+		gameMusic.volume = musicVolume;
+
+		solveSound1.volume = sfxVolume;
+		solveSound2.volume = sfxVolume;
+		solveSound3.volume = sfxVolume;
+		multiSolveSound.volume = sfxVolume;
+		levelUpSound.volume = sfxVolume;
+		gameOverSound.volume = sfxVolume;
+		cellClickSound.volume = sfxVolume * 0.5;
+
+
 
 		const savedHighScore = localStorage.getItem('reflektions-high-score');
-		if (savedHighScore !== null) {
-			highScore = Number(savedHighScore);
-		}
+			if (savedHighScore !== null) {
+				highScore = Number(savedHighScore);
+			}
 
 		const savedColorMode = localStorage.getItem('reflektions-color-mode');
-		if (savedColorMode === 'theme' || savedColorMode === 'greyscale') {
-			colorMode = savedColorMode;
-		}
+			if (savedColorMode === 'theme' || savedColorMode === 'greyscale') {
+				colorMode = savedColorMode;
+			}
+		const savedSfxVolume = localStorage.getItem('reflektions-sfx-volume');
+			if (savedSfxVolume !== null) {
+				sfxVolume = Number(savedSfxVolume);
+			}
 
+		const savedMusicVolume = localStorage.getItem('reflektions-music-volume');
+			if (savedMusicVolume !== null) {
+				musicVolume = Number(savedMusicVolume);
+			}
 		const interval = setInterval(() => {
+			if (!gameStarted) return;
 			if (gameOver) return;
 
 			timeLeft = Math.max(0, timeLeft - 0.05);
 
 			if (timeLeft === 0) {
 				gameOver = true;
+				stopMusic();
 				playSound(gameOverSound);
 			}
 		}, 50);
@@ -244,23 +301,21 @@
 	}
 
 	function playSound(sound: HTMLAudioElement) {
-		if (!sfxEnabled) return;
+		if (sfxVolume <= 0) return;
 		if (!sound) return;
 
 		sound.currentTime = 0;
 		sound.play().catch(() => {});
 	}
 
-	function toggleSfx() {
-		sfxEnabled = !sfxEnabled;
-		localStorage.setItem(
-			'reflektions-sfx-enabled',
-			String(sfxEnabled)
-		);
+	let pendingBoardSwitch = $state(false);
+
+	function handleCellChange() {
+		playSound(cellClickSound);
 	}
 
-	let pendingBoardSwitch = $state(false);
-	function handleSolve(symmetryCount: number) {
+	function handleSolve(solvedModes: string[]) {
+		const symmetryCount = solvedModes.length;
 		const solveTimeBonus = symmetryCount * currentLevel.solveBonusSeconds;
 		const solvePoints = symmetryCount * currentLevel.solveScorePoints;
 
@@ -293,7 +348,7 @@
 				boardFadeKey += 1;
 			}, 1150);
 		} else {
-			playSound(solveSound);
+			playSound(getSolveSound(solvedModes));
 		}
 
 		score = nextScore;
@@ -304,11 +359,56 @@
 		}
 	}
 
+	function getSolveSound(solvedModes: string[]) {
+		// Multiple symmetries = special sound
+		if (solvedModes.length > 1) {
+			return multiSolveSound;
+		}
+
+		if (
+			solvedModes.includes('squareVertical') ||
+			solvedModes.includes('topToBase')
+		) {
+			return solveSound1;
+		}
+
+		if (
+			solvedModes.includes('squareHorizontal') ||
+			solvedModes.includes('leftToRightSide')
+		) {
+			return solveSound2;
+		}
+
+		return solveSound3;
+	}
+
 	function toggleColorMode() {
 		colorMode = colorMode === 'greyscale' ? 'theme' : 'greyscale';
 		localStorage.setItem('reflektions-color-mode', colorMode);
 	}
 
+	function startMusic() {
+		if (!gameMusic) return;
+		if (musicVolume <= 0) return;
+
+		gameMusic.loop = true;
+		gameMusic.volume = musicVolume;
+		gameMusic.currentTime = 0;
+		gameMusic.play().catch(() => {});
+	}
+
+	function stopMusic() {
+		if (!gameMusic) return;
+
+		gameMusic.pause();
+		gameMusic.currentTime = 0;
+	}
+
+	function startGame() {
+		gameStarted = true;
+		resetGame();
+		startMusic();
+	}
 	
 	function resetGame() {
 		score = 0;
@@ -317,6 +417,10 @@
 		currentLevelIndex = 0;
 		chooseBoardTypeForLevel();
 		gameId += 1;
+
+		if (gameStarted) {
+			startMusic();
+		}
 	}
 </script>
 
@@ -338,57 +442,88 @@
 		<div class="mb-4 flex flex-wrap items-center justify-center gap-3">
 			<button
 				type="button"
-				class="min-h-11 rounded bg-slate-700 px-4 py-2 touch-manipulation select-none hover:bg-slate-600"
-				onclick={resetGame}
+				class="min-h-11 rounded-xl bg-slate-700 px-4 py-2 touch-manipulation select-none hover:bg-slate-600 active:bg-slate-500"
+				onclick={gameStarted ? resetGame : startGame}
 			>
-				New Game
+				{gameStarted ? 'New Game' : 'Start Game'}
+			</button>
+			<button
+				type="button"
+				class="min-h-11 rounded bg-slate-700 px-4 py-2 text-xl touch-manipulation select-none hover:bg-slate-600 active:bg-slate-500"
+				aria-label="Open settings"
+				onclick={() => (settingsOpen = !settingsOpen)}
+			>
+				⚙
 			</button>
 
-			<label class="flex flex-col items-center gap-1 text-sm font-medium">
-				<span>Colour</span>
-
-				<button
-					type="button"
-					role="switch"
-					aria-checked={colorMode !== 'greyscale'}
-					aria-label="Toggle colour mode"
-					class={[
-						'relative h-8 w-16 rounded-full transition-colors touch-manipulation select-none',
-						colorMode !== 'greyscale' ? 'bg-green-500' : 'bg-slate-600'
-					].join(' ')}
-					onclick={toggleColorMode}
-				>
-					<div
-						class={[
-							'absolute top-1 h-6 w-6 rounded-full bg-white transition-all',
-							colorMode !== 'greyscale' ? 'left-9' : 'left-1'
-						].join(' ')}
-					></div>
-				</button>
-			</label>
-			<label class="flex flex-col items-center gap-1 text-sm font-medium">
-				<span>SFX</span>
-
-				<button
-					type="button"
-					role="switch"
-					aria-checked={sfxEnabled}
-					aria-label="Toggle sound effects"
-					class={[
-						'relative h-8 w-16 rounded-full transition-colors touch-manipulation select-none',
-						sfxEnabled ? 'bg-green-500' : 'bg-slate-600'
-					].join(' ')}
-					onclick={toggleSfx}
-				>
-					<div
-						class={[
-							'absolute top-1 h-6 w-6 rounded-full bg-white transition-all',
-							sfxEnabled ? 'left-9' : 'left-1'
-						].join(' ')}
-					></div>
-				</button>
-			</label>
 		</div>
+
+		{#if settingsOpen}
+			<div class="mx-auto mb-4 max-w-sm rounded-2xl border border-slate-700 bg-slate-900 p-4 shadow-xl">
+				<div class="mb-3 text-center text-lg font-bold">Settings</div>
+
+				<label class="mb-4 block">
+					<div class="mb-1 flex justify-between text-sm font-medium">
+						<span>SFX Volume</span>
+						<span>{Math.round(sfxVolume * 100)}%</span>
+					</div>
+
+					<input
+						type="range"
+						min="0"
+						max="1"
+						step="0.05"
+						value={sfxVolume}
+						oninput={(event) =>
+							setSfxVolume(Number(event.currentTarget.value))
+						}
+						class="w-full"
+					/>
+				</label>
+
+				<label class="mb-4 block">
+					<div class="mb-1 flex justify-between text-sm font-medium">
+						<span>Music Volume</span>
+						<span>{Math.round(musicVolume * 100)}%</span>
+					</div>
+
+					<input
+						type="range"
+						min="0"
+						max="1"
+						step="0.05"
+						value={musicVolume}
+						oninput={(event) =>
+							setMusicVolume(Number(event.currentTarget.value))
+						}
+						class="w-full"
+					/>
+				</label>
+
+				<div class="flex items-center justify-between">
+					<span class="text-sm font-medium">Colour Mode</span>
+
+					<button
+						type="button"
+						role="switch"
+						aria-checked={colorMode !== 'greyscale'}
+						aria-label="Toggle colour mode"
+						class={[
+							'relative h-8 w-16 rounded-full transition-colors touch-manipulation select-none',
+							colorMode !== 'greyscale' ? 'bg-green-500' : 'bg-slate-600'
+						].join(' ')}
+						onclick={toggleColorMode}
+					>
+						<div
+							class={[
+								'absolute top-1 h-6 w-6 rounded-full bg-white transition-all',
+								colorMode !== 'greyscale' ? 'left-9' : 'left-1'
+							].join(' ')}
+						></div>
+					</button>
+				</div>
+			</div>
+		{/if}
 
 		<div class="mb-3 text-center text-lg font-semibold text-slate-200">
 			{currentLevel.levelText}
@@ -408,6 +543,7 @@
 							palette={getPalette()}
 							{gameOver}
 							onSolve={handleSolve}
+							onCellChange={handleCellChange}
 							hideNextBoard={pendingBoardSwitch}
 						/>
 					{:else}
@@ -417,6 +553,7 @@
 							palette={getPalette()}
 							{gameOver}
 							onSolve={handleSolve}
+							onCellChange={handleCellChange}
 							hideNextBoard={pendingBoardSwitch}
 						/>
 					{/if}

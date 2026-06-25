@@ -40,13 +40,15 @@
 		palette,
 		gameOver,
 		onSolve,
+		onCellChange,
 		hideNextBoard = false
 	}: {
 		gameId: number;
 		level: LevelSettings;
 		palette: Palette;
 		gameOver: boolean;
-		onSolve: (bonus: number) => void;
+		onSolve: (solvedModes: ConcreteSymmetryMode[]) => void;
+		onCellChange: () => void;
 		hideNextBoard: boolean;
 	} = $props();
 
@@ -335,7 +337,7 @@
 
 		grid[row][col] =
 			grid[row][col] === CELL_STATES.blue ? CELL_STATES.orange : CELL_STATES.blue;
-
+		onCellChange();
 		const solvedSymmetries = checkSolvedSymmetries(grid);
 		const validSolved = validSolutionModes.some((mode) => solvedSymmetries[mode]);
 
@@ -350,7 +352,7 @@
 		clearingPalette = palette;
 		clearingSize = size;
 
-		onSolve(symmetryCount);
+		onSolve(solvedLineModes);
 
 		await new Promise((resolve) => setTimeout(resolve, 450));
         if (!mounted) return;
