@@ -42,6 +42,7 @@
 		showGameOver,
 		onSolve,
 		onCellChange,
+		onTryAgain,
 		hideNextBoard = false
 	}: {
 		gameId: number;
@@ -51,6 +52,7 @@
 		showGameOver: boolean;
 		onSolve: (solvedModes: ConcreteSymmetryMode[]) => void;
 		onCellChange: () => void;
+		onTryAgain: () => void;
 		hideNextBoard: boolean;
 	} = $props();
 
@@ -390,10 +392,18 @@
 <div class="relative overflow-hidden rounded-2xl bg-slate-950">
 	{#if showGameOver}
 		<div class="pointer-events-none absolute inset-0 z-30 flex items-center justify-center">
-			<div
-				class="rounded-lg border border-slate-500 bg-slate-950/90 px-5 py-2 text-xl font-bold tracking-wider text-red-300"
-			>
-				GAME OVER
+			<div class="rounded-lg border border-slate-500 bg-slate-950/90 px-6 py-4 text-center">
+				<div class="mb-3 text-xl font-bold tracking-wider text-red-300">
+					GAME OVER
+				</div>
+
+				<button
+					type="button"
+					class="pointer-events-auto rounded-xl bg-slate-700 px-4 py-2 font-semibold text-white hover:bg-slate-600 active:bg-slate-500"
+					onclick={onTryAgain}
+				>
+					Try Again
+				</button>
 			</div>
 		</div>
 	{/if}

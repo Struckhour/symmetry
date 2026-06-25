@@ -55,6 +55,7 @@
         showGameOver,
         onSolve,
         onCellChange,
+        onTryAgain,
         hideNextBoard = false
     }: {
         gameId: number;
@@ -62,12 +63,14 @@
             size: number;
             scrambleFlips: number;
             solveBonusSeconds: number;
+            creationModes: string[];
         };
         palette: Palette;
         gameOver: boolean;
         showGameOver: boolean;
         onSolve: (solvedModes: ConcreteTriangleSymmetryMode[]) => void;
         onCellChange: () => void;
+        onTryAgain: () => void;
         hideNextBoard: boolean;
     } = $props();
 
@@ -84,7 +87,17 @@
     const boardWidth = $derived(size * side);
     const boardHeight = $derived(size * height);
 
-	let cells = $state<TriangleCell[]>(createTriangleCells());
+	let cells = $state<TriangleCell[]>([]);
+
+    function getCreationModeForTriangle(): TriangleSymmetryMode {
+        if (level.creationModes.length === 0) {
+            return 'random';
+        }
+
+        return level.creationModes[
+            Math.floor(Math.random() * level.creationModes.length)
+        ] as TriangleSymmetryMode;
+    }
 
     function handleCellPointerUp(event: PointerEvent, id: string) {
         if (!event.isPrimary) return;
@@ -493,7 +506,7 @@
         for (let attempt = 0; attempt < maxAttempts; attempt++) {
             cells = createTriangleCells();
 
-            currentPuzzleMode = resolveTriangleSymmetryMode(creationMode);
+            currentPuzzleMode = resolveTriangleSymmetryMode(getCreationModeForTriangle());
 
             createTriangleSymmetryBoard(currentPuzzleMode);
             scrambleTriangleBoard(level.scrambleFlips, currentPuzzleMode);
@@ -506,7 +519,7 @@
         // fallback
         cells = createTriangleCells();
 
-        currentPuzzleMode = resolveTriangleSymmetryMode(creationMode);
+        currentPuzzleMode = resolveTriangleSymmetryMode(getCreationModeForTriangle());
 
         createTriangleSymmetryBoard(currentPuzzleMode);
         scrambleTriangleBoard(level.scrambleFlips + 1, currentPuzzleMode);
@@ -590,8 +603,18 @@
 <div class="relative overflow-hidden rounded-2xl bg-slate-950">
     {#if showGameOver}
         <div class="pointer-events-none absolute inset-0 z-30 flex items-center justify-center">
-            <div class="rounded-lg border border-slate-500 bg-slate-950/90 px-5 py-2 text-xl font-bold tracking-wider text-red-300">
-                GAME OVER
+            <div class="rounded-lg border border-slate-500 bg-slate-950/90 px-6 py-4 text-center">
+                <div class="mb-3 text-xl font-bold tracking-wider text-red-300">
+                    GAME OVER
+                </div>
+
+                <button
+                    type="button"
+                    class="pointer-events-auto rounded-xl bg-slate-700 px-4 py-2 font-semibold text-white hover:bg-slate-600 active:bg-slate-500"
+                    onclick={onTryAgain}
+                >
+                    Try Again
+                </button>
             </div>
         </div>
     {/if}
@@ -601,7 +624,7 @@
             class={[
                 'triangle-svg',
                 gameOver ? 'opacity-35 saturate-50' : '',
-                clearingCells && !exploding ? 'opacity-0' : ''
+                clearingCells && (!exploding || hideNextBoard) ? 'opacity-0' : ''
             ].join(' ')}
             viewBox={`0 0 ${boardWidth} ${boardHeight}`}
             preserveAspectRatio="xMidYMid meet"

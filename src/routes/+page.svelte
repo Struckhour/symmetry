@@ -2,9 +2,8 @@
 	import { onMount } from 'svelte';
 	import SquareGame from '$lib/components/SquareGame.svelte';
 	import TriangleGame from '$lib/components/TriangleGame.svelte';
-	import type {
-		LevelSettings
-	} from '$lib/types';
+	import { levels } from '$lib/levels';
+	import type { LevelSettings } from '$lib/types';
 	type ColorMode = 'theme' | 'greyscale';
 
 
@@ -50,137 +49,7 @@
 	let musicVolume = $state(0.4);
 
 
-	const levels: LevelSettings[] = [
-		{
-			threshold: 0,
-			levelText: 'Level 1: Vertical Symmetry',
-			boardType: 'square',
-			size: 4,
-			scrambleFlips: 1,
-			solveBonusSeconds: 2,
-			solveScorePoints: 1,
-			levelCompletionTimeBonus: 15,
-			levelCompletionScoreBonus: 0,
-			creationModes: ['squareVertical'],
-			colors: {
-				blue: 'bg-blue-800',
-				orange: 'bg-orange-400'
-			}
-		},
-		{
-			threshold: 5,
-			levelText: 'Level 2: Horizontal Symmetry',
-			boardType: 'square',
-			size: 4,
-			scrambleFlips: 1,
-			solveBonusSeconds: 2,
-			solveScorePoints: 1,
-			levelCompletionTimeBonus: 15,
-			levelCompletionScoreBonus: 0,
-			creationModes: ['squareHorizontal'],
-			colors: {
-				blue: 'bg-purple-800',
-				orange: 'bg-yellow-400'
-			}
-		},
-		{
-			threshold: 10,
-			levelText: 'Level 3: Diagonal Symmetry',
-			boardType: 'square',
-			size: 4,
-			scrambleFlips: 1,
-			solveBonusSeconds: 2,
-			solveScorePoints: 1,
-			levelCompletionTimeBonus: 15,
-			levelCompletionScoreBonus: 0,
-			creationModes: ['squareDiagonalDown', 'squareDiagonalUp'],
-			colors: {
-				blue: 'bg-emerald-800',
-				orange: 'bg-pink-400'
-			}
-		},
-		{
-			threshold: 15,
-			levelText: 'Level 4',
-			boardType: 'square',
-			size: 4,
-			scrambleFlips: 1,
-			solveBonusSeconds: 2,
-			solveScorePoints: 1,
-			levelCompletionTimeBonus: 15,
-			levelCompletionScoreBonus: 0,
-			creationModes: ['squareDiagonalDown', 'squareDiagonalUp', 'squareHorizontal', 'squareVertical'],
-			colors: {
-				blue: 'bg-cyan-800',
-				orange: 'bg-yellow-400'
-			}
-		},
-		{
-			threshold: 20,
-			levelText: 'Level 5',
-			boardType: 'square',
-			size: 5,
-			scrambleFlips: 2,
-			solveBonusSeconds: 3,
-			solveScorePoints: 1,
-			levelCompletionTimeBonus: 15,
-			levelCompletionScoreBonus: 0,
-			creationModes: ['squareDiagonalDown', 'squareDiagonalUp', 'squareHorizontal', 'squareVertical'],
-			colors: {
-				blue: 'bg-gray-900',
-				orange: 'bg-teal-400'
-			}
-		},
-		{
-			threshold: 25,
-			levelText: 'Level 6',
-			boardType: 'square',
-			size: 6,
-			scrambleFlips: 2,
-			solveBonusSeconds: 3,
-			solveScorePoints: 1,
-			levelCompletionTimeBonus: 30,
-			levelCompletionScoreBonus: 0,
-			creationModes: ['squareDiagonalDown', 'squareDiagonalUp', 'squareHorizontal', 'squareVertical'],
-			colors: {
-				blue: 'bg-purple-900',
-				orange: 'bg-orange-300'
-			}
-		},
-		{
-			threshold: 30,
-			levelText: 'Level 7',
-			boardType: 'square',
-			size: 5,
-			scrambleFlips: 2,
-			solveBonusSeconds: 3,
-			solveScorePoints: 1,
-			levelCompletionTimeBonus: 30,
-			levelCompletionScoreBonus: 0,
-			creationModes: ['squareDiagonalDown', 'squareDiagonalUp', 'squareHorizontal', 'squareVertical'],
-			colors: {
-				blue: 'bg-pink-900',
-				orange: 'bg-lime-200'
-			}
-		},
-		{
-			threshold: 35,
-			levelText: 'Level 8',
-			boardType: 'triangle',
-			size: 4,
-			scrambleFlips: 1,
-			solveBonusSeconds: 1,
-			solveScorePoints: 1,
-			levelCompletionTimeBonus: 10,
-			levelCompletionScoreBonus: 0,
-			creationModes: [],
-			colors: {
-				blue: 'bg-blue-800',
-				orange: 'bg-orange-400'
-			}
-		},
-
-	];
+	
 
 	let currentLevel = $derived(levels[currentLevelIndex]);
 	let solveSound1: HTMLAudioElement;
@@ -199,13 +68,15 @@
 		return Math.random() < 0.5 ? 'square' : 'triangle';
 	}
 
-	let activeBoardType = $state<ConcreteBoardType>('square');
+	let activeBoardType = $state<ConcreteBoardType>(
+		levels[0].boardType === 'random' ? getRandomBoardType() : levels[0].boardType
+	);
 
-	function chooseBoardTypeForLevel() {
+	function chooseBoardTypeForLevel(level: LevelSettings = levels[currentLevelIndex]) {
 		activeBoardType =
-			currentLevel.boardType === 'random'
+			level.boardType === 'random'
 				? getRandomBoardType()
-				: currentLevel.boardType;
+				: level.boardType;
 	}
 
 
@@ -407,7 +278,6 @@
 	function startGame() {
 		gameStarted = true;
 		resetGame();
-		startMusic();
 	}
 	
 	function resetGame() {
@@ -480,6 +350,7 @@
 							showGameOver={gameOver}
 							onSolve={handleSolve}
 							onCellChange={handleCellChange}
+							onTryAgain={resetGame}
 							hideNextBoard={pendingBoardSwitch}
 						/>
 					{:else}
@@ -491,6 +362,7 @@
 							showGameOver={gameOver}
 							onSolve={handleSolve}
 							onCellChange={handleCellChange}
+							onTryAgain={resetGame}
 							hideNextBoard={pendingBoardSwitch}
 						/>
 					{/if}
@@ -544,7 +416,7 @@
 						</label>
 
 						<div class="flex items-center justify-between">
-							<span class="text-sm font-medium">Colour Mode</span>
+							<span class="text-sm font-medium">Colour</span>
 
 							<button
 								type="button"
