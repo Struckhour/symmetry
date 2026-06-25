@@ -1,7 +1,7 @@
 <script lang="ts">
 	import type { Palette } from '$lib/types';
 	import { onMount, untrack } from 'svelte';
-
+    import { classToColor } from '$lib/palettes';
 	const CELL_STATES = {
 		blue: 0,
 		orange: 1
@@ -320,27 +320,11 @@
     }
 
     function getSvgFill(cell: CellState, activePalette = palette) {
-        if (cell === CELL_STATES.blue) return classToColor(activePalette.blue);
-        if (cell === CELL_STATES.orange) return classToColor(activePalette.orange);
+        if (cell === CELL_STATES.blue) return classToColor[activePalette.blue] ?? '#64748b';
+        if (cell === CELL_STATES.orange) return classToColor[activePalette.orange] ?? '#64748b';
 
         return '#64748b';
     }
-
-	function classToColor(className: string) {
-		const colors: Record<string, string> = {
-			'bg-blue-800': '#1e40af',
-			'bg-orange-400': '#fb923c',
-			'bg-purple-800': '#6b21a8',
-			'bg-yellow-400': '#facc15',
-			'bg-emerald-800': '#065f46',
-			'bg-pink-400': '#f472b6',
-            'bg-cyan-800': '#155e75',
-			'bg-slate-700': '#334155',
-			'bg-slate-300': '#cbd5e1'
-		};
-
-		return colors[className] ?? '#64748b';
-	}
 
     function randomTriangleState(): CellState {
         return Math.random() < 0.5 ? CELL_STATES.blue : CELL_STATES.orange;
@@ -605,7 +589,7 @@
         <div class="pointer-events-none absolute inset-0 z-30 flex items-center justify-center">
             <div class="rounded-lg border border-slate-500 bg-slate-950/90 px-6 py-4 text-center">
                 <div class="mb-3 text-xl font-bold tracking-wider text-red-300">
-                    GAME OVER
+                    Out of Time!
                 </div>
 
                 <button
@@ -778,5 +762,15 @@
         -webkit-user-select: none;
         -webkit-tap-highlight-color: transparent;
     }
+
+	.slow-board-rotate {
+		animation: slow-board-rotate 180s linear infinite;
+	}
+
+    @keyframes slow-board-rotate {
+		to {
+			transform: rotate(360deg);
+		}
+	}
 
 </style>

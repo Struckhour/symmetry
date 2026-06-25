@@ -394,7 +394,7 @@
 		<div class="pointer-events-none absolute inset-0 z-30 flex items-center justify-center">
 			<div class="rounded-lg border border-slate-500 bg-slate-950/90 px-6 py-4 text-center">
 				<div class="mb-3 text-xl font-bold tracking-wider text-red-300">
-					GAME OVER
+					Out of Time!
 				</div>
 
 				<button
