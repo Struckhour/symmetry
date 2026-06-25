@@ -52,6 +52,7 @@
         level,
         palette,
         gameOver,
+        showGameOver,
         onSolve,
         onCellChange,
         hideNextBoard = false
@@ -64,6 +65,7 @@
         };
         palette: Palette;
         gameOver: boolean;
+        showGameOver: boolean;
         onSolve: (solvedModes: ConcreteTriangleSymmetryMode[]) => void;
         onCellChange: () => void;
         hideNextBoard: boolean;
@@ -485,6 +487,7 @@
     }
 
     function newTrianglePuzzle() {
+        if (showGameOver) return;
         const maxAttempts = 10;
 
         for (let attempt = 0; attempt < maxAttempts; attempt++) {
@@ -585,7 +588,7 @@
 
 
 <div class="relative overflow-hidden rounded-2xl bg-slate-950">
-    {#if gameOver}
+    {#if showGameOver}
         <div class="pointer-events-none absolute inset-0 z-30 flex items-center justify-center">
             <div class="rounded-lg border border-slate-500 bg-slate-950/90 px-5 py-2 text-xl font-bold tracking-wider text-red-300">
                 GAME OVER
@@ -597,6 +600,7 @@
         <svg
             class={[
                 'triangle-svg',
+                gameOver ? 'opacity-35 saturate-50' : '',
                 clearingCells && !exploding ? 'opacity-0' : ''
             ].join(' ')}
             viewBox={`0 0 ${boardWidth} ${boardHeight}`}
@@ -608,7 +612,10 @@
                 <polygon
                     points={cell.points}
                     fill={getSvgFill(cell.state)}
-                    class="triangle-cell"
+                    class={[
+                        'triangle-cell',
+                        gameOver ? 'pointer-events-none cursor-default' : ''
+                    ].join(' ')}
                     role="button"
                     tabindex="0"
                     aria-label={`Toggle triangle ${cell.row + 1}, ${cell.col + 1}`}

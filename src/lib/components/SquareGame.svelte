@@ -39,6 +39,7 @@
 		level,
 		palette,
 		gameOver,
+		showGameOver,
 		onSolve,
 		onCellChange,
 		hideNextBoard = false
@@ -47,6 +48,7 @@
 		level: LevelSettings;
 		palette: Palette;
 		gameOver: boolean;
+		showGameOver: boolean;
 		onSolve: (solvedModes: ConcreteSymmetryMode[]) => void;
 		onCellChange: () => void;
 		hideNextBoard: boolean;
@@ -299,7 +301,7 @@
 	}
 
     function newPuzzle() {
-        if (gameOver) return;
+        if (showGameOver) return;
 
         const maxAttempts = 10;
 
@@ -386,7 +388,7 @@
 </script>
 
 <div class="relative overflow-hidden rounded-2xl bg-slate-950">
-	{#if gameOver}
+	{#if showGameOver}
 		<div class="pointer-events-none absolute inset-0 z-30 flex items-center justify-center">
 			<div
 				class="rounded-lg border border-slate-500 bg-slate-950/90 px-5 py-2 text-xl font-bold tracking-wider text-red-300"

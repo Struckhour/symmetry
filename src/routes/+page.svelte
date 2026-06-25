@@ -39,6 +39,7 @@
 	let score = $state(0);
 	
 	let gameOver = $state(false);
+	let gameStarted = $state(false);
 	let colorMode = $state<ColorMode>('theme');
 	let currentLevelIndex = $state(0);
 	let gameId = $state(0);
@@ -69,7 +70,7 @@
 		{
 			threshold: 5,
 			levelText: 'Level 2: Horizontal Symmetry',
-			boardType: 'triangle',
+			boardType: 'square',
 			size: 4,
 			scrambleFlips: 1,
 			solveBonusSeconds: 2,
@@ -100,7 +101,7 @@
 		},
 		{
 			threshold: 15,
-			levelText: 'Level 4: Triangles!',
+			levelText: 'Level 4',
 			boardType: 'square',
 			size: 4,
 			scrambleFlips: 1,
@@ -189,7 +190,6 @@
 	let levelUpSound: HTMLAudioElement;
 	let gameOverSound: HTMLAudioElement;
 	let gameMusic: HTMLAudioElement;
-	let gameStarted = $state(false);
 	let cellClickSound: HTMLAudioElement;
 	type ConcreteBoardType = 'square' | 'triangle';
 
@@ -275,7 +275,7 @@
 			}
 		const interval = setInterval(() => {
 			if (!gameStarted) return;
-			if (gameOver) return;
+			if (!gameStarted || gameOver) return;
 
 			timeLeft = Math.max(0, timeLeft - 0.05);
 
@@ -455,85 +455,20 @@
 			>
 				⚙
 			</button>
+			
 
 		</div>
 
-		{#if settingsOpen}
-			<div class="mx-auto mb-4 max-w-sm rounded-2xl border border-slate-700 bg-slate-900 p-4 shadow-xl">
-				<div class="mb-3 text-center text-lg font-bold">Settings</div>
 
-				<label class="mb-4 block">
-					<div class="mb-1 flex justify-between text-sm font-medium">
-						<span>SFX Volume</span>
-						<span>{Math.round(sfxVolume * 100)}%</span>
-					</div>
-
-					<input
-						type="range"
-						min="0"
-						max="1"
-						step="0.05"
-						value={sfxVolume}
-						oninput={(event) =>
-							setSfxVolume(Number(event.currentTarget.value))
-						}
-						class="w-full"
-					/>
-				</label>
-
-				<label class="mb-4 block">
-					<div class="mb-1 flex justify-between text-sm font-medium">
-						<span>Music Volume</span>
-						<span>{Math.round(musicVolume * 100)}%</span>
-					</div>
-
-					<input
-						type="range"
-						min="0"
-						max="1"
-						step="0.05"
-						value={musicVolume}
-						oninput={(event) =>
-							setMusicVolume(Number(event.currentTarget.value))
-						}
-						class="w-full"
-					/>
-				</label>
-
-				<div class="flex items-center justify-between">
-					<span class="text-sm font-medium">Colour Mode</span>
-
-					<button
-						type="button"
-						role="switch"
-						aria-checked={colorMode !== 'greyscale'}
-						aria-label="Toggle colour mode"
-						class={[
-							'relative h-8 w-16 rounded-full transition-colors touch-manipulation select-none',
-							colorMode !== 'greyscale' ? 'bg-green-500' : 'bg-slate-600'
-						].join(' ')}
-						onclick={toggleColorMode}
-					>
-						<div
-							class={[
-								'absolute top-1 h-6 w-6 rounded-full bg-white transition-all',
-								colorMode !== 'greyscale' ? 'left-9' : 'left-1'
-							].join(' ')}
-						></div>
-					</button>
-				</div>
-			</div>
-		{/if}
 
 		<div class="mb-3 text-center text-lg font-semibold text-slate-200">
 			{currentLevel.levelText}
 		</div>
 
 		<div
-			class="rounded-3xl p-2 transition-all"
+			class="relative rounded-3xl p-2 transition-all"
 			style={`background: conic-gradient(from 0deg, ${timerForeground} ${timerDegrees}deg, ${timerBackground} ${timerDegrees}deg 360deg);`}
 		>
-			
 			{#key boardFadeKey}
 				<div class="animate-board-fade-in">
 					{#if activeBoardType === 'square'}
@@ -541,7 +476,8 @@
 							{gameId}
 							level={currentLevel}
 							palette={getPalette()}
-							{gameOver}
+							gameOver={gameOver || !gameStarted}
+							showGameOver={gameOver}
 							onSolve={handleSolve}
 							onCellChange={handleCellChange}
 							hideNextBoard={pendingBoardSwitch}
@@ -551,7 +487,8 @@
 							{gameId}
 							level={currentLevel}
 							palette={getPalette()}
-							{gameOver}
+							gameOver={gameOver || !gameStarted}
+							showGameOver={gameOver}
 							onSolve={handleSolve}
 							onCellChange={handleCellChange}
 							hideNextBoard={pendingBoardSwitch}
@@ -559,7 +496,78 @@
 					{/if}
 				</div>
 			{/key}
-		
+
+			{#if settingsOpen}
+				<button
+					type="button"
+					class="absolute inset-0 z-40 rounded-3xl bg-slate-950/60 backdrop-blur-sm"
+					aria-label="Close settings"
+					onclick={() => (settingsOpen = false)}
+				></button>
+
+				<div class="absolute inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
+					<div class="w-full max-w-sm rounded-2xl border border-slate-700 bg-slate-900 p-5 shadow-2xl pointer-events-auto">
+						<div class="mb-3 text-center text-lg font-bold">Settings</div>
+
+						<label class="mb-4 block">
+							<div class="mb-1 flex justify-between text-sm font-medium">
+								<span>SFX Volume</span>
+								<span>{Math.round(sfxVolume * 100)}%</span>
+							</div>
+
+							<input
+								type="range"
+								min="0"
+								max="1"
+								step="0.05"
+								value={sfxVolume}
+								oninput={(event) => setSfxVolume(Number(event.currentTarget.value))}
+								class="w-full"
+							/>
+						</label>
+
+						<label class="mb-4 block">
+							<div class="mb-1 flex justify-between text-sm font-medium">
+								<span>Music Volume</span>
+								<span>{Math.round(musicVolume * 100)}%</span>
+							</div>
+
+							<input
+								type="range"
+								min="0"
+								max="1"
+								step="0.05"
+								value={musicVolume}
+								oninput={(event) => setMusicVolume(Number(event.currentTarget.value))}
+								class="w-full"
+							/>
+						</label>
+
+						<div class="flex items-center justify-between">
+							<span class="text-sm font-medium">Colour Mode</span>
+
+							<button
+								type="button"
+								role="switch"
+								aria-checked={colorMode !== 'greyscale'}
+								aria-label="Toggle colour mode"
+								class={[
+									'relative h-8 w-16 rounded-full transition-colors touch-manipulation select-none',
+									colorMode !== 'greyscale' ? 'bg-green-500' : 'bg-slate-600'
+								].join(' ')}
+								onclick={toggleColorMode}
+							>
+								<div
+									class={[
+										'absolute top-1 h-6 w-6 rounded-full bg-white transition-all',
+										colorMode !== 'greyscale' ? 'left-9' : 'left-1'
+									].join(' ')}
+								></div>
+							</button>
+						</div>
+					</div>
+				</div>
+			{/if}
 		</div>
 	</section>
 </main>
